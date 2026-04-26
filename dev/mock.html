@@ -32,7 +32,7 @@
     <div class="mock-badge">MOCK MODE</div>
 
     <script type="text/babel">
-        const { useState, useMemo, useEffect, useRef, Fragment } = React;
+        const { useState, useMemo, useEffect, useRef } = React;
 
         // ── 1. CONSTANTS ──────────────────────────────────────────
         const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -178,7 +178,7 @@
                                     {times.map((time) => {
                                         const isHour = time.endsWith(':00');
                                         return (
-                                            <Fragment key={time}>
+                                            <React.Fragment key={time}>
                                                 {(time === '14:00' || time === '18:00') && (
                                                     <div className="flex items-center py-2 my-1 relative"><div className="w-[40px]"></div><div className="flex-1 border-t border-dashed border-indigo-200"></div></div>
                                                 )}
@@ -186,7 +186,7 @@
                                                     <div className={`flex items-center justify-end pr-2 text-right select-none ${isHour ? 'text-[10px] font-bold text-gray-500' : 'text-[9px] font-medium text-gray-400'}`}>{time}</div>
                                                     {days.map(day => <div key={day} className="relative">{renderCell(day, time)}</div>)}
                                                 </div>
-                                            </Fragment>
+                                            </React.Fragment>
                                         );
                                     })}
                                 </div>
@@ -324,6 +324,32 @@
             </div>
         );
 
+        const MemberListModal = ({ members, onClose }) => (
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                <div className="bg-white p-6 rounded-3xl max-w-md w-full shadow-2xl flex flex-col max-h-[80vh]">
+                    <div className="flex items-center justify-between mb-6 shrink-0">
+                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">👥 Danh sách thành viên</h3>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition"><svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
+                        {members.map((m, idx) => (
+                            <div key={idx} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 border border-gray-100 hover:border-indigo-100 transition-all group">
+                                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center font-bold shadow-sm">
+                                    {m.photo ? <img src={m.photo} className="w-full h-full rounded-full object-cover" /> : m.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-gray-700 truncate">{m.name}</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Thành viên chính thức</p>
+                                </div>
+                                <div className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">Active</div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-6 text-center"><button onClick={onClose} className="px-8 py-3 rounded-2xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg w-full">Đóng</button></div>
+                </div>
+            </div>
+        );
+
         // ── 6. SIDEBAR COMPONENTS ────────────────────────────────
         const SidebarTop = ({ syncing, onOpenManage, onOpenCourts }) => (
             <div className="card p-4 shrink-0 flex flex-col gap-4">
@@ -355,38 +381,54 @@
             const info = bookedSlots[activeSlot];
             return (
                 <div className="card p-5 flex flex-col flex-1 min-h-0">
-                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 mb-4 pb-3 border-b border-gray-50 shrink-0">Thành viên rảnh</h2>
                     {!activeSlot ? (
                         <div className="flex flex-col items-center justify-center py-14 text-gray-200 text-center flex-1">
                             <p className="text-[9px] font-semibold uppercase tracking-widest">Chọn ô tổng hợp</p>
                         </div>
                     ) : (
-                        <div className="fade-in space-y-3 flex flex-col flex-1 min-h-0">
-                            {info && (
-                                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-start gap-2 shrink-0 shadow-sm animate-pulse">
-                                    <span className="text-lg">🏸</span>
-                                    <div>
-                                        <p className="text-[8px] font-bold text-emerald-400 uppercase tracking-wider">Đã đặt sân</p>
-                                        <p className="text-[11px] font-bold text-emerald-700 leading-tight">{info.court}</p>
-                                        <p className="text-[9px] text-emerald-600/60 mt-0.5 italic">Người đặt: <b>{info.user}</b></p>
+                        <div className="fade-in space-y-5 flex flex-col flex-1 min-h-0">
+                            {/* Phần 1: Thông tin sân */}
+                            <div className="shrink-0 space-y-3">
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900 pb-2 border-b border-gray-100">Thông tin sân</h2>
+                                <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2.5 shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs">📅</span>
+                                        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">
+                                            {activeSlot.replace('-', ' • ')}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start gap-2 pt-2 border-t border-gray-200/50">
+                                        <span className="text-xs">🏸</span>
+                                        {info ? (
+                                            <div>
+                                                <p className="text-[11px] font-bold text-emerald-700 leading-tight">{info.court}</p>
+                                                <p className="text-[9px] text-emerald-600/60 mt-0.5 italic">Người đặt: <b>{info.user}</b></p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-[11px] text-gray-400 italic">Trống</p>
+                                        )}
                                     </div>
                                 </div>
-                            )}
-                            <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100 shrink-0">
-                                <p className="text-[10px] font-bold text-gray-500 tracking-tight">{activeSlot.replace('-', ' • ')}</p>
                             </div>
-                            <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1 pb-1">
-                                {(slotUsers[activeSlot] || []).length === 0 ? (
-                                    <p className="text-[10px] text-center py-8 text-gray-300 italic">Trống</p>
-                                ) : (slotUsers[activeSlot] || []).map((u, i) => (
-                                    <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-indigo-100 transition-all">
-                                        {u.photo
-                                            ? <img src={u.photo} className="w-7 h-7 rounded-lg object-cover" />
-                                            : <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center text-[10px] font-bold">{u.name.charAt(0).toUpperCase()}</div>
-                                        }
-                                        <p className="text-[11px] font-semibold text-gray-500 truncate">{u.name}</p>
-                                    </div>
-                                ))}
+
+                            {/* Phần 2: Danh sách */}
+                            <div className="flex flex-col flex-1 min-h-0">
+                                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 shrink-0">
+                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Ai rảnh?</h2>
+                                </div>
+                                <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1 pb-1">
+                                    {(slotUsers[activeSlot] || []).length === 0 ? (
+                                        <p className="text-[10px] text-center py-8 text-gray-300 italic">Trống</p>
+                                    ) : (slotUsers[activeSlot] || []).map((u, i) => (
+                                        <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-indigo-100 transition-all">
+                                            {u.photo
+                                                ? <img src={u.photo} className="w-7 h-7 rounded-lg object-cover" />
+                                                : <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center text-[10px] font-bold">{u.name.charAt(0).toUpperCase()}</div>
+                                            }
+                                            <p className="text-[11px] font-semibold text-gray-500 truncate">{u.name}</p>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -409,6 +451,7 @@
             const [isManageModalOpen, setIsManageModalOpen] = useState(false);
             const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
             const [isSelectCourtModalOpen, setIsSelectCourtModalOpen] = useState(false);
+            const [isMemberListModalOpen, setIsMemberListModalOpen] = useState(false);
 
             const [newSelection, setNewSelection] = useState(new Set());
             const [deleteSelection, setDeleteSelection] = useState(new Set());
@@ -494,7 +537,12 @@
 
                         <section className="lg:col-span-5 card p-5 flex flex-col h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
                             <SectionHeader title="2. Tổng hợp" colorClass="text-rose-400" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>}>
-                                <span className="text-[10px] text-gray-300 font-medium">{allSchedules.length} thành viên</span>
+                                <button 
+                                    onClick={() => setIsMemberListModalOpen(true)}
+                                    className="text-[10px] text-gray-400 font-bold bg-gray-50 hover:bg-gray-100 border border-gray-100 px-2 py-1 rounded-lg transition-all shadow-sm"
+                                >
+                                    {allSchedules.length} thành viên
+                                </button>
                             </SectionHeader>
                             <TimeGrid innerRef={grid2Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
                                 const key = `${day}-${time}`;
@@ -519,6 +567,7 @@
                         {isManageModalOpen && <ManageBookingModal heatmap={heatmap} bookedSlots={bookedSlots} newSelection={newSelection} setNewSelection={setNewSelection} deleteSelection={deleteSelection} setDeleteSelection={setDeleteSelection} onClose={() => setIsManageModalOpen(false)} onSelectCourt={() => setIsSelectCourtModalOpen(true)} />}
                         {isSelectCourtModalOpen && <SelectCourtModal newCount={newSelection.size} delCount={deleteSelection.size} selectedCourt={selectedCourt} setSelectedCourt={setSelectedCourt} onBack={() => setIsSelectCourtModalOpen(false)} onSave={handleFinalSave} />}
                         {isCourtModalOpen && <CourtListModal onClose={() => setIsCourtModalOpen(false)} />}
+                        {isMemberListModalOpen && <MemberListModal members={allSchedules} onClose={() => setIsMemberListModalOpen(false)} />}
                         {modalConfig && <ConfirmationModal config={modalConfig} onClose={() => setModalConfig(null)} />}
 
                     </div>
