@@ -94,7 +94,7 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
 
-        // ── DATA CONFIG ───────────────────────────────────────────
+        // ── CONSTANTS ─────────────────────────────────────────────
         const COURTS = [
             { name: 'EZB Đằng Hải', phone: '0779766333', address: '84 Lũng Bắc' },
             { name: 'EZB Cầu Niệm', phone: '0934275222', address: '22 Tân Hà' },
@@ -110,13 +110,13 @@
 
         const MOCK_ME = {
             uid: 'user-me',
-            displayName: 'Manh Nguyen',
+            displayName: 'Mạnh Nguyễn',
             photoURL: null,
         };
 
         const MOCK_SCHEDULES = [
             {
-                id: 'user-me', name: 'Manh Nguyen', photo: null,
+                id: 'user-me', name: 'Mạnh Nguyễn', photo: null,
                 slots: ['T2-08:00', 'T3-08:00', 'T4-08:00', 'T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00']
             },
             {
@@ -156,7 +156,7 @@
                 slots: ['T2-10:00', 'T2-10:30']
             },
             {
-                id: 'u11', name: 'K', photo: null,
+                id: 'u11', name: 'Kiên', photo: null,
                 slots: ['T2-10:30']
             },
         ];
@@ -187,12 +187,7 @@
             return HEAT_STEPS[Math.min(count, 8) - 1];
         }
 
-        const SyncIcon = ({ spin }) => (
-            <svg className={`w-3 h-3 ${spin ? 'spin' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-            </svg>
-        );
-
+        // ── MAIN APP ──────────────────────────────────────────────
         function App() {
             const [mySlots, setMySlots] = useState(new Set(MOCK_SCHEDULES[0].slots));
             const [fixed, setFixed] = useState(false);
@@ -201,14 +196,16 @@
             const [syncing, setSyncing] = useState(false);
 
             const [bookedSlots, setBookedSlots] = useState({
-                'T2-08:00': 'EZB Đằng Hải',
-                'T2-09:00': 'EZB Đằng Hải'
+                'T2-08:00': { court: 'EZB Đằng Hải', user: 'Mạnh Nguyễn' },
+                'T2-09:00': { court: 'EZB Đằng Hải', user: 'Mạnh Nguyễn' }
             });
 
             const [isManageModalOpen, setIsManageModalOpen] = useState(false);
             const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
             const [isSelectCourtModalOpen, setIsSelectCourtModalOpen] = useState(false);
-            const [tempBookedKeys, setTempBookedKeys] = useState(new Set());
+
+            const [newSelection, setNewSelection] = useState(new Set());
+            const [deleteSelection, setDeleteSelection] = useState(new Set());
             const [selectedCourt, setSelectedCourt] = useState(COURTS[0].name);
 
             const grid1Ref = useRef(null);
@@ -218,79 +215,13 @@
                 const el1 = grid1Ref.current;
                 const el2 = grid2Ref.current;
                 if (!el1 || !el2) return;
-
                 let lock = false;
-                const onScroll1 = () => {
-                    if (lock) return;
-                    lock = true;
-                    el2.scrollTop = el1.scrollTop;
-                    el2.scrollLeft = el1.scrollLeft;
-                    window.requestAnimationFrame(() => { lock = false; });
-                };
-
-                const onScroll2 = () => {
-                    if (lock) return;
-                    lock = true;
-                    el1.scrollTop = el2.scrollTop;
-                    el1.scrollLeft = el2.scrollLeft;
-                    window.requestAnimationFrame(() => { lock = false; });
-                };
-
+                const onScroll1 = () => { if (!lock) { lock = true; el2.scrollTop = el1.scrollTop; el2.scrollLeft = el1.scrollLeft; window.requestAnimationFrame(() => lock = false); } };
+                const onScroll2 = () => { if (!lock) { lock = true; el1.scrollTop = el2.scrollTop; el1.scrollLeft = el2.scrollLeft; window.requestAnimationFrame(() => lock = false); } };
                 el1.addEventListener('scroll', onScroll1, { passive: true });
                 el2.addEventListener('scroll', onScroll2, { passive: true });
-
-                return () => {
-                    el1.removeEventListener('scroll', onScroll1);
-                    el2.removeEventListener('scroll', onScroll2);
-                };
+                return () => { el1.removeEventListener('scroll', onScroll1); el2.removeEventListener('scroll', onScroll2); };
             }, []);
-
-            const toggleSlot = (day, time) => {
-                const key = `${day}-${time}`;
-                setMySlots(prev => {
-                    const next = new Set(prev);
-                    next.has(key) ? next.delete(key) : next.add(key);
-                    return next;
-                });
-                setSyncing(true);
-                setTimeout(() => setSyncing(false), 500);
-            };
-
-            const toggleFixed = () => {
-                setFixed(!fixed);
-                setSyncing(true);
-                setTimeout(() => setSyncing(false), 500);
-            };
-
-            const handleSelectAll = () => {
-                const all = new Set();
-                DAYS.forEach(day => {
-                    TIMES.forEach(time => {
-                        all.add(`${day}-${time}`);
-                    });
-                });
-                setMySlots(all);
-                setModalConfig(null);
-            };
-
-            const handleClearAll = () => {
-                setMySlots(new Set());
-                setModalConfig(null);
-            };
-
-            const confirmAction = (type) => {
-                if (type === 'ALL') {
-                    setModalConfig({
-                        message: 'Mày chắc chưa? Sẽ chọn tất cả các ca trong tuần đó!',
-                        onConfirm: handleSelectAll
-                    });
-                } else if (type === 'CLEAR') {
-                    setModalConfig({
-                        message: 'Mày chắc chưa? Sẽ xoá toàn bộ lịch đã chọn đó!',
-                        onConfirm: handleClearAll
-                    });
-                }
-            };
 
             const allSchedules = useMemo(() => [
                 { ...MOCK_SCHEDULES[0], slots: Array.from(mySlots) },
@@ -299,40 +230,30 @@
 
             const heatmap = useMemo(() => {
                 const map = {};
-                allSchedules.forEach(entry => {
-                    entry.slots.forEach(slot => {
-                        map[slot] = (map[slot] || 0) + 1;
-                    });
-                });
+                allSchedules.forEach(entry => entry.slots.forEach(slot => { map[slot] = (map[slot] || 0) + 1; }));
                 return map;
             }, [allSchedules]);
 
             const slotUsers = useMemo(() => {
                 const map = {};
-                allSchedules.forEach(entry => {
-                    entry.slots.forEach(slot => {
-                        if (!map[slot]) map[slot] = [];
-                        map[slot].push({ name: entry.name, photo: entry.photo });
-                    });
-                });
+                allSchedules.forEach(entry => entry.slots.forEach(slot => {
+                    if (!map[slot]) map[slot] = [];
+                    map[slot].push({ name: entry.name, photo: entry.photo });
+                }));
                 return map;
             }, [allSchedules]);
 
-            const handleSaveBooking = () => {
-                const newBooked = { ...bookedSlots };
-                // Xoá những ca cũ không còn nằm trong danh sách chọn hiện tại (nếu cần sync)
-                // Tuy nhiên ở bản mock này ta chỉ đơn giản là gán sân mới cho những cái đang chọn
-                tempBookedKeys.forEach(key => {
-                    newBooked[key] = selectedCourt;
+            const handleFinalSave = () => {
+                const next = { ...bookedSlots };
+                deleteSelection.forEach(k => delete next[k]);
+                newSelection.forEach(k => {
+                    next[k] = { court: selectedCourt, user: MOCK_ME.displayName };
                 });
-                // Bonus: Xoá những key mà người dùng bỏ chọn trong Modal 1
-                Object.keys(newBooked).forEach(k => {
-                    if (!tempBookedKeys.has(k)) delete newBooked[k];
-                });
-                
-                setBookedSlots(newBooked);
+                setBookedSlots(next);
                 setIsSelectCourtModalOpen(false);
                 setIsManageModalOpen(false);
+                setNewSelection(new Set());
+                setDeleteSelection(new Set());
             };
 
             return (
@@ -341,40 +262,23 @@
 
                         {/* 1. CÁ NHÂN */}
                         <section className="lg:col-span-5 card p-5 flex flex-col h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
-                            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 shrink-0">
-                                <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#04BADE] flex items-center gap-1.5 whitespace-nowrap">
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                                    1. Lịch của tôi
-                                </h2>
+                            <SectionHeader
+                                title="1. Lịch của tôi"
+                                colorClass="text-[#04BADE]"
+                                icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>}
+                            >
                                 <div className="flex items-center gap-2">
-                                    <div className="relative group">
-                                        <button onClick={toggleFixed}
-                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold transition-all duration-200 text-[#04BADE]
-                      ${fixed ? 'bg-[#04BADE]/10 border-[#04BADE]/30' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
-                                            Cố định
-                                            <span className={`w-6 h-3 rounded-full relative transition-colors duration-200 ${fixed ? 'bg-[#04BADE]' : 'bg-gray-300'}`}>
-                                                <span className={`absolute top-0.5 w-2 h-2 rounded-full bg-white shadow transition-all duration-200 ${fixed ? 'left-3.5' : 'left-0.5'}`} />
-                                            </span>
-                                        </button>
-                                        <div className="absolute right-0 top-full mt-1.5 w-56 bg-gray-900 text-white text-[10px] leading-relaxed rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
-                                            Khi bật, lịch của bạn sẽ cố định hàng tuần và không bị tự động xoá sau mỗi ngày.
-                                        </div>
-                                    </div>
-                                    <button onClick={() => confirmAction('ALL')} className="px-2.5 py-1 rounded-lg border border-[#04BADE]/30 bg-[#04BADE]/10 text-[#04BADE] text-[10px] font-semibold hover:bg-[#04BADE]/20 transition-all whitespace-nowrap">
-                                        Chọn tất cả
-                                    </button>
-                                    <button onClick={() => confirmAction('CLEAR')} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all whitespace-nowrap">
-                                        Bỏ chọn
-                                    </button>
+                                    <FixedToggle fixed={fixed} onToggle={() => { setFixed(!fixed); setSyncing(true); setTimeout(() => setSyncing(false), 500); }} />
+                                    <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ chọn tất cả các ca trong tuần đó!', onConfirm: () => { const all = new Set(); DAYS.forEach(d => TIMES.forEach(t => all.add(`${d}-${t}`))); setMySlots(all); setModalConfig(null); } })} className="px-2.5 py-1 rounded-lg border border-[#04BADE]/30 bg-[#04BADE]/10 text-[#04BADE] text-[10px] font-semibold hover:bg-[#04BADE]/20 transition-all">Chọn tất cả</button>
+                                    <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ xoá toàn bộ lịch đã chọn đó!', onConfirm: () => { setMySlots(new Set()); setModalConfig(null); } })} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all">Bỏ chọn</button>
                                 </div>
-                            </div>
+                            </SectionHeader>
                             <TimeGrid innerRef={grid1Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
                                 const key = `${day}-${time}`;
                                 const sel = mySlots.has(key);
                                 return (
-                                    <button key={key} onClick={() => toggleSlot(day, time)}
-                                        className={`w-full rounded-xl border h-9 flex items-center justify-center transition-all duration-150
-                       ${sel ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40 hover:shadow-sm'}`}>
+                                    <button key={key} onClick={() => { const n = new Set(mySlots); n.has(key) ? n.delete(key) : n.add(key); setMySlots(n); setSyncing(true); setTimeout(() => setSyncing(false), 500); }}
+                                        className={`w-full rounded-xl border h-9 flex items-center justify-center transition-all duration-150 ${sel ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40'}`}>
                                         {sel && <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>}
                                     </button>
                                 );
@@ -383,289 +287,38 @@
 
                         {/* 2. TỔNG HỢP */}
                         <section className="lg:col-span-5 card p-5 flex flex-col h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
-                            <div className="flex items-center justify-between mb-5 shrink-0">
-                                <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-rose-400 flex items-center gap-1.5">
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
-                                    2. Tổng hợp
-                                </h2>
+                            <SectionHeader
+                                title="2. Tổng hợp"
+                                colorClass="text-rose-400"
+                                icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>}
+                            >
                                 <span className="text-[10px] text-gray-300 font-medium">{allSchedules.length} thành viên</span>
-                            </div>
+                            </SectionHeader>
                             <TimeGrid innerRef={grid2Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
                                 const key = `${day}-${time}`;
                                 const count = heatmap[key] || 0;
                                 const c = heatColor(count);
                                 const isActive = activeSlot === key;
-                                const isBooked = !!bookedSlots[key];
+                                const info = bookedSlots[key];
                                 return (
-                                    <button key={key}
-                                        onClick={() => setActiveSlot(isActive ? null : key)}
-                                        style={{
-                                            background: c.bg,
-                                            color: c.text,
-                                            borderColor: isActive ? '#6366f1' : c.border,
-                                            outline: isActive ? '2px solid #c7d2fe' : 'none',
-                                            outlineOffset: '1px'
-                                        }}
-                                        className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 hover:brightness-95">
+                                    <button key={key} onClick={() => setActiveSlot(isActive ? null : key)} style={{ background: c.bg, color: c.text, borderColor: isActive ? '#6366f1' : c.border, outline: isActive ? '2px solid #c7d2fe' : 'none', outlineOffset: '1px' }} className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all hover:brightness-95">
                                         {count > 0 ? count : ''}
-                                        {isBooked && (
-                                            <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm" title={bookedSlots[key]}>🏸</span>
-                                        )}
+                                        {info && <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm" title={`${info.court} - ${info.user}`}>🏸</span>}
                                     </button>
                                 );
                             }} />
                         </section>
 
-                        {/* SIDEBAR */}
-                        <aside className="lg:col-span-2">
-                            <div className="flex flex-col gap-4 sticky top-4 h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
-                                <div className="card p-4 shrink-0 flex flex-col gap-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs">📅</div>
-                                            <span className="font-bold text-sm tracking-tight">Lịch Rảnh</span>
-                                        </div>
-                                        <div className={`flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase ${syncing ? 'text-indigo-400' : 'text-gray-300'}`}>
-                                            <SyncIcon spin={syncing} /> {syncing ? 'Saving' : 'MOCK'}
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
-                                            <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[11px] font-bold">M</div>
-                                            <span className="text-xs font-medium text-gray-700 truncate">{MOCK_ME.displayName}</span>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setTempBookedKeys(new Set(Object.keys(bookedSlots)));
-                                                setIsManageModalOpen(true);
-                                            }}
-                                            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"
-                                        >
-                                            <span className="text-[14px]">🏸</span>
-                                            Quản lý đặt sân
-                                        </button>
-                                        <button
-                                            onClick={() => setIsCourtModalOpen(true)}
-                                            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"
-                                        >
-                                            <span className="text-[14px]">📍</span>
-                                            Danh sách sân
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="card p-5 flex flex-col flex-1 min-h-0">
-                                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-50 shrink-0">
-                                        <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">
-                                            Thành viên rảnh
-                                        </h2>
-                                    </div>
-
-                                    {!activeSlot ? (
-                                        <div className="flex flex-col items-center justify-center py-14 text-gray-200 text-center flex-1">
-                                            <p className="text-[9px] font-semibold uppercase tracking-widest">Chọn ô tổng hợp</p>
-                                        </div>
-                                    ) : (
-                                        <div className="fade-in space-y-3 flex flex-col flex-1 min-h-0">
-                                            {/* HIỂN THỊ SÂN Ở ĐÂY NÈ MÀY */}
-                                            {bookedSlots[activeSlot] && (
-                                                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center gap-2 shrink-0 shadow-sm animate-pulse">
-                                                    <span className="text-base">🏸</span>
-                                                    <div>
-                                                        <p className="text-[8px] font-bold text-emerald-400 uppercase tracking-wider">Đã đặt sân</p>
-                                                        <p className="text-[11px] font-bold text-emerald-700">{bookedSlots[activeSlot]}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100 shrink-0">
-                                                <p className="text-[10px] font-bold text-gray-500 tracking-tight">
-                                                    {activeSlot.replace('-', ' • ')}
-                                                </p>
-                                            </div>
-                                            <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1 pb-1">
-                                                {(slotUsers[activeSlot] || []).length === 0 ? (
-                                                    <p className="text-[10px] text-center py-8 text-gray-300 italic">Trống</p>
-                                                ) : (slotUsers[activeSlot] || []).map((u, i) => (
-                                                    <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-indigo-100 transition-all">
-                                                        {u.photo
-                                                            ? <img src={u.photo} className="w-7 h-7 rounded-lg object-cover" referrerPolicy="no-referrer" />
-                                                            : <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center text-[10px] font-bold">{u.name.charAt(0).toUpperCase()}</div>
-                                                        }
-                                                        <p className="text-[11px] font-semibold text-gray-500 truncate">{u.name}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                        {/* SIDEBAR & MODALS */}
+                        <aside className="lg:col-span-2 h-[calc(100vh-32px)] md:h-[calc(100vh-48px)] flex flex-col gap-4 sticky top-4">
+                            <SidebarTop syncing={syncing} onOpenManage={() => { setNewSelection(new Set()); setDeleteSelection(new Set()); setIsManageModalOpen(true); }} onOpenCourts={() => setIsCourtModalOpen(true)} />
+                            <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
                         </aside>
 
-                        {/* MODAL 1: CHỌN Ô ĐẶT SÂN */}
-                        {isManageModalOpen && (
-                            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
-                                <div className="bg-white p-5 rounded-3xl max-w-3xl w-full shadow-2xl flex flex-col h-[85vh]">
-                                    <div className="flex items-center justify-between mb-4 shrink-0">
-                                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                                            <span>🏸</span> Chọn ca đặt sân thực tế
-                                        </h3>
-                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Bấm ô để chọn/hủy</p>
-                                    </div>
-
-                                    <div className="flex-1 min-h-0 bg-gray-50 rounded-2xl border border-gray-100 p-2 flex flex-col">
-                                        <TimeGrid days={DAYS} times={TIMES} renderCell={(day, time) => {
-                                            const key = `${day}-${time}`;
-                                            const count = heatmap[key] || 0;
-                                            const c = heatColor(count);
-                                            const isSelected = tempBookedKeys.has(key);
-                                            return (
-                                                <button key={key}
-                                                    onClick={() => {
-                                                        const next = new Set(tempBookedKeys);
-                                                        next.has(key) ? next.delete(key) : next.add(key);
-                                                        setTempBookedKeys(next);
-                                                    }}
-                                                    style={{
-                                                        background: isSelected ? '#04BADE' : c.bg,
-                                                        color: isSelected ? '#fff' : c.text,
-                                                        borderColor: isSelected ? '#03a6c7' : c.border
-                                                    }}
-                                                    className={`w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 relative hover:brightness-95 shadow-sm`}>
-                                                    {count > 0 ? count : ''}
-                                                    {isSelected && (
-                                                        <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm">🏸</span>
-                                                    )}
-                                                </button>
-                                            );
-                                        }} />
-                                    </div>
-
-                                    <div className="flex gap-3 justify-end mt-4 shrink-0">
-                                        <button onClick={() => setIsManageModalOpen(false)} className="px-5 py-2.5 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">
-                                            Hủy
-                                        </button>
-                                        <button 
-                                            onClick={() => {
-                                                if (tempBookedKeys.size === 0) {
-                                                    setBookedSlots({});
-                                                    setIsManageModalOpen(false);
-                                                } else {
-                                                    setIsSelectCourtModalOpen(true);
-                                                }
-                                            }} 
-                                            className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20"
-                                        >
-                                            {tempBookedKeys.size > 0 ? 'Chọn sân' : 'Xoá tất cả đặt sân'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* MODAL 2: CHỌN TÊN SÂN */}
-                        {isSelectCourtModalOpen && (
-                            <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[110] px-4 fade-in">
-                                <div className="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
-                                    <div className="text-center mb-6">
-                                        <div className="w-14 h-14 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-800">Chọn sân muốn đặt</h3>
-                                        <p className="text-xs text-gray-400 mt-1">Đã chọn {tempBookedKeys.size} ca rảnh</p>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">Sân hiện có</label>
-                                            <select 
-                                                value={selectedCourt} 
-                                                onChange={(e) => setSelectedCourt(e.target.value)} 
-                                                className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-semibold text-gray-700 outline-none focus:border-[#04BADE] transition-all"
-                                            >
-                                                {COURTS.map((c, i) => (
-                                                    <option key={i} value={c.name}>{c.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="flex gap-3 pt-2">
-                                            <button onClick={() => setIsSelectCourtModalOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 transition">
-                                                Quay lại
-                                            </button>
-                                            <button onClick={handleSaveBooking} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20">
-                                                Lưu
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* COURT LIST MODAL */}
-                        {isCourtModalOpen && (
-                            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
-                                <div className="bg-white p-6 rounded-3xl max-w-4xl w-full shadow-2xl flex flex-col max-h-[85vh]">
-                                    <div className="flex items-center justify-between mb-6 shrink-0">
-                                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                            <span className="text-2xl">📍</span> Danh sách sân cầu lông
-                                        </h3>
-                                        <button onClick={() => setIsCourtModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
-                                        </button>
-                                    </div>
-
-                                    <div className="flex-1 overflow-auto custom-scrollbar border border-gray-100 rounded-2xl bg-gray-50/50">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-white sticky top-0 z-10 shadow-sm">
-                                                    <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 w-12 text-center">#</th>
-                                                    <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100">Tên sân</th>
-                                                    <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100">Số điện thoại</th>
-                                                    <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100">Địa chỉ</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100">
-                                                {COURTS.map((court, idx) => (
-                                                    <tr key={idx} className="hover:bg-white transition-colors group">
-                                                        <td className="p-4 text-xs font-bold text-gray-300 text-center">{idx + 1}</td>
-                                                        <td className="p-4 text-xs font-bold text-[#04BADE]">{court.name}</td>
-                                                        <td className="p-4 text-xs font-semibold text-gray-600 group-hover:text-emerald-500 transition-colors">
-                                                            <a href={`tel:${court.phone}`} className="flex items-center gap-1.5">
-                                                                {court.phone}
-                                                            </a>
-                                                        </td>
-                                                        <td className="p-4 text-xs text-gray-500 leading-relaxed">{court.address}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <div className="mt-6 text-center">
-                                        <button onClick={() => setIsCourtModalOpen(false)} className="px-8 py-3 rounded-2xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20">
-                                            Đóng
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* CONFIRMATION MODAL */}
-                        {modalConfig && (
-                            <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
-                                <div className="bg-white p-6 rounded-2xl max-w-xs w-full shadow-2xl text-center">
-                                    <h3 className="text-lg font-bold mb-2 text-gray-800">Xác nhận</h3>
-                                    <p className="text-sm text-gray-500 mb-6">{modalConfig.message}</p>
-                                    <div className="flex gap-3 justify-center">
-                                        <button onClick={() => setModalConfig(null)} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 transition">
-                                            Tao chưa
-                                        </button>
-                                        <button onClick={modalConfig.onConfirm} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition">
-                                            Tao chắc
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        {isManageModalOpen && <ManageBookingModal heatmap={heatmap} bookedSlots={bookedSlots} newSelection={newSelection} setNewSelection={setNewSelection} deleteSelection={deleteSelection} setDeleteSelection={setDeleteSelection} onClose={() => setIsManageModalOpen(false)} onSelectCourt={() => setIsSelectCourtModalOpen(true)} />}
+                        {isSelectCourtModalOpen && <SelectCourtModal newCount={newSelection.size} delCount={deleteSelection.size} selectedCourt={selectedCourt} setSelectedCourt={setSelectedCourt} onBack={() => setIsSelectCourtModalOpen(false)} onSave={handleFinalSave} />}
+                        {isCourtModalOpen && <CourtListModal onClose={() => setIsCourtModalOpen(false)} />}
+                        {modalConfig && <ConfirmationModal config={modalConfig} onClose={() => setModalConfig(null)} />}
 
                     </div>
                 </div>
@@ -674,22 +327,254 @@
 
         // ── COMPONENTS ────────────────────────────────────────────
 
+        function SectionHeader({ title, icon, colorClass, children }) {
+            return (
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-5 shrink-0">
+                    <h2 className={`text-[11px] font-bold uppercase tracking-[0.15em] ${colorClass} flex items-center gap-1.5 whitespace-nowrap`}>
+                        {icon} {title}
+                    </h2>
+                    {children}
+                </div>
+            );
+        }
+
+        function FixedToggle({ fixed, onToggle }) {
+            return (
+                <div className="relative group">
+                    <button onClick={onToggle} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold transition-all duration-200 text-[#04BADE] ${fixed ? 'bg-[#04BADE]/10 border-[#04BADE]/30' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
+                        Cố định
+                        <span className={`w-6 h-3 rounded-full relative transition-colors duration-200 ${fixed ? 'bg-[#04BADE]' : 'bg-gray-300'}`}>
+                            <span className={`absolute top-0.5 w-2 h-2 rounded-full bg-white transition-all ${fixed ? 'left-3.5' : 'left-0.5'}`} />
+                        </span>
+                    </button>
+                    <div className="absolute right-0 top-full mt-1.5 w-56 bg-gray-900 text-white text-[10px] leading-relaxed rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
+                        Khi bật, lịch của bạn sẽ cố định hàng tuần và không bị tự động xoá sau mỗi ngày.
+                    </div>
+                </div>
+            );
+        }
+
+        const SyncIcon = ({ spin }) => (
+            <svg className={`w-3 h-3 ${spin ? 'spin' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+            </svg>
+        );
+
+        function SidebarTop({ syncing, onOpenManage, onOpenCourts }) {
+            return (
+                <div className="card p-4 shrink-0 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs text-white">📅</div>
+                            <span className="font-bold text-sm tracking-tight">Lịch Rảnh</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase text-gray-300">
+                            <SyncIcon spin={syncing} /> {syncing ? 'Saving' : 'MOCK'}
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
+                            <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[11px] font-bold">M</div>
+                            <span className="text-xs font-bold text-gray-700 truncate">{MOCK_ME.displayName}</span>
+                        </div>
+                        <button onClick={onOpenManage} className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm">
+                            <span className="text-[14px]">🏸</span> Quản lý đặt sân
+                        </button>
+                        <button onClick={onOpenCourts} className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm">
+                            <span className="text-[14px]">📍</span> Danh sách sân
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function SidebarDetail({ activeSlot, bookedSlots, slotUsers }) {
+            const info = bookedSlots[activeSlot];
+            return (
+                <div className="card p-5 flex flex-col flex-1 min-h-0">
+                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 mb-4 pb-3 border-b border-gray-50 shrink-0">Thành viên rảnh</h2>
+                    {!activeSlot ? (
+                        <div className="flex flex-col items-center justify-center py-14 text-gray-200 text-center flex-1">
+                            <p className="text-[9px] font-semibold uppercase tracking-widest">Chọn ô tổng hợp</p>
+                        </div>
+                    ) : (
+                        <div className="fade-in space-y-3 flex flex-col flex-1 min-h-0">
+                            {info && (
+                                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-start gap-2 shrink-0 shadow-sm animate-pulse">
+                                    <span className="text-lg">🏸</span>
+                                    <div>
+                                        <p className="text-[8px] font-bold text-emerald-400 uppercase tracking-wider">Đã đặt sân</p>
+                                        <p className="text-[11px] font-bold text-emerald-700 leading-tight">{info.court}</p>
+                                        <p className="text-[9px] text-emerald-600/60 mt-0.5 italic">Người đặt: <b>{info.user}</b></p>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100 shrink-0">
+                                <p className="text-[10px] font-bold text-gray-500 tracking-tight">{activeSlot.replace('-', ' • ')}</p>
+                            </div>
+                            <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1 pb-1">
+                                {(slotUsers[activeSlot] || []).length === 0 ? (
+                                    <p className="text-[10px] text-center py-8 text-gray-300 italic">Trống</p>
+                                ) : (slotUsers[activeSlot] || []).map((u, i) => (
+                                    <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-indigo-100 transition-all">
+                                        {u.photo
+                                            ? <img src={u.photo} className="w-7 h-7 rounded-lg object-cover" />
+                                            : <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center text-[10px] font-bold">{u.name.charAt(0).toUpperCase()}</div>
+                                        }
+                                        <p className="text-[11px] font-semibold text-gray-500 truncate">{u.name}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function ManageBookingModal({ heatmap, bookedSlots, newSelection, setNewSelection, deleteSelection, setDeleteSelection, onClose, onSelectCourt }) {
+            return (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                    <div className="bg-white p-5 rounded-3xl max-w-3xl w-full shadow-2xl flex flex-col h-[85vh]">
+                        <div className="flex items-center justify-between mb-4 shrink-0">
+                            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><span>🏸</span> Quản lý đặt sân</h3>
+                            <div className="flex gap-2">
+                                <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-[#04BADE] rounded-sm"></span><span className="text-[8px] font-bold uppercase text-gray-400">Đã chốt</span></div>
+                                <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-amber-400 rounded-sm"></span><span className="text-[8px] font-bold uppercase text-gray-400">Chọn mới</span></div>
+                                <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-rose-400 rounded-sm"></span><span className="text-[8px] font-bold uppercase text-gray-400">Sẽ xóa</span></div>
+                            </div>
+                        </div>
+                        <div className="flex-1 min-h-0 bg-gray-50 rounded-2xl border border-gray-100 p-2 flex flex-col">
+                            <TimeGrid days={DAYS} times={TIMES} renderCell={(day, time) => {
+                                const key = `${day}-${time}`;
+                                const count = heatmap[key] || 0;
+                                const isBooked = !!bookedSlots[key];
+                                const isNew = newSelection.has(key);
+                                const isDel = deleteSelection.has(key);
+
+                                let bg = '#fff', border = '#f3f4f6', text = '#d1d5db';
+                                if (isBooked && !isDel) { bg = '#04BADE'; border = '#03a6c7'; text = '#fff'; }
+                                else if (isDel) { bg = '#fb7185'; border = '#e11d48'; text = '#fff'; }
+                                else if (isNew) { bg = '#fbbf24'; border = '#f59e0b'; text = '#fff'; }
+                                else if (count > 0) { const c = heatColor(count); bg = c.bg; border = c.border; text = c.text; }
+
+                                return (
+                                    <button key={key} onClick={() => {
+                                        if (isBooked) {
+                                            const next = new Set(deleteSelection);
+                                            next.has(key) ? next.delete(key) : next.add(key);
+                                            setDeleteSelection(next);
+                                        } else {
+                                            const next = new Set(newSelection);
+                                            next.has(key) ? next.delete(key) : next.add(key);
+                                            setNewSelection(next);
+                                        }
+                                    }} style={{ background: bg, color: text, borderColor: border }} className="w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold relative transition-all shadow-sm hover:brightness-95">
+                                        {count > 0 ? count : ''}
+                                        {(isBooked || isNew) && !isDel && <span className="absolute bottom-0.5 right-0.5 text-[10px]">🏸</span>}
+                                        {isDel && <span className="absolute inset-0 flex items-center justify-center text-white bg-rose-500/20 rounded-xl">✕</span>}
+                                    </button>
+                                );
+                            }} />
+                        </div>
+                        <div className="flex gap-3 justify-end mt-4 shrink-0">
+                            <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition">Hủy</button>
+                            <button onClick={onSelectCourt} disabled={newSelection.size === 0 && deleteSelection.size === 0} className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg disabled:opacity-50">Tiếp tục</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SelectCourtModal({ newCount, delCount, selectedCourt, setSelectedCourt, onBack, onSave }) {
+            return (
+                <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[110] px-4 fade-in">
+                    <div className="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
+                        <div className="text-center mb-6">
+                            <div className="w-14 h-14 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-800">Xác nhận thay đổi</h3>
+                        </div>
+                        <div className="space-y-3 mb-6">
+                            {newCount > 0 && (
+                                <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Thêm mới/Cập nhật {newCount} ca:</p>
+                                    <select value={selectedCourt} onChange={(e) => setSelectedCourt(e.target.value)} className="w-full mt-2 p-2 bg-white border border-amber-200 rounded-lg text-xs font-bold outline-none focus:border-amber-400 transition-all">
+                                        {COURTS.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                            {delCount > 0 && (
+                                <div className="p-3 bg-rose-50 rounded-xl border border-rose-100">
+                                    <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Sẽ gỡ đặt sân cho {delCount} ca</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button onClick={onBack} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 transition">Quay lại</button>
+                            <button onClick={onSave} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20">Lưu thay đổi</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function CourtListModal({ onClose }) {
+            return (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                    <div className="bg-white p-6 rounded-3xl max-w-4xl w-full shadow-2xl flex flex-col max-h-[85vh]">
+                        <div className="flex items-center justify-between mb-6 shrink-0">
+                            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">📍 Danh sách sân</h3>
+                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition"><svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        </div>
+                        <div className="flex-1 overflow-auto custom-scrollbar border border-gray-100 rounded-2xl bg-gray-50/50">
+                            <table className="w-full text-left border-collapse text-xs">
+                                <thead className="bg-white sticky top-0 z-10 shadow-sm text-[10px] font-bold text-gray-400 uppercase">
+                                    <tr><th className="p-4 w-12 text-center border-b">#</th><th className="p-4 border-b">Tên sân</th><th className="p-4 border-b">SĐT</th><th className="p-4 border-b">Địa chỉ</th></tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {COURTS.map((court, idx) => (
+                                        <tr key={idx} className="hover:bg-white transition-colors group">
+                                            <td className="p-4 font-bold text-gray-300 text-center">{idx + 1}</td>
+                                            <td className="p-4 font-bold text-[#04BADE]">{court.name}</td>
+                                            <td className="p-4 font-semibold text-gray-600 group-hover:text-emerald-500 transition-colors"><a href={`tel:${court.phone}`}>{court.phone}</a></td>
+                                            <td className="p-4 text-gray-500">{court.address}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="mt-6 text-center"><button onClick={onClose} className="px-8 py-3 rounded-2xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg">Đóng</button></div>
+                    </div>
+                </div>
+            );
+        }
+
+        function ConfirmationModal({ config, onClose }) {
+            return (
+                <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                    <div className="bg-white p-6 rounded-2xl max-w-xs w-full shadow-2xl text-center">
+                        <h3 className="text-lg font-bold mb-2 text-gray-800">Xác nhận</h3>
+                        <p className="text-sm text-gray-500 mb-6">{config.message}</p>
+                        <div className="flex gap-3 justify-center">
+                            <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 transition">Tao chưa</button>
+                            <button onClick={config.onConfirm} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition">Tao chắc</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         function TimeGrid({ days, times, renderCell, innerRef }) {
             const todayStr = useMemo(() => {
-                const d = new Date();
-                const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-                const gmt7 = new Date(utc + (3600000 * 7));
-                const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-                return dayMap[gmt7.getDay()];
+                const d = new Date(); const utc = d.getTime() + (d.getTimezoneOffset() * 60000); const gmt7 = new Date(utc + (3600000 * 7));
+                const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']; return dayMap[gmt7.getDay()];
             }, []);
-
             const todayIndex = days.indexOf(todayStr);
 
             return (
                 <div className="overflow-x-auto flex-1 flex flex-col min-h-0">
                     <div ref={innerRef} style={{ minWidth: '460px' }} className="flex-1 overflow-y-auto relative custom-scrollbar">
-
-                        {/* Header Ngày */}
                         <div className="sticky top-0 z-40 bg-white pt-3 pb-2 px-2 border-b border-gray-100">
                             {todayIndex !== -1 && (
                                 <div className="absolute inset-0 pointer-events-none z-10 px-2" style={{ top: '1px', bottom: '-1px' }}>
@@ -698,29 +583,18 @@
                                         {days.map((d, i) => (
                                             <div key={d} className="relative h-full">
                                                 {i === todayIndex && (
-                                                    <div className="absolute top-0 bottom-0 border-[#04BADE] rounded-t-[10px]"
-                                                        style={{
-                                                            left: '-3.75px', right: '-3.75px',
-                                                            borderTopWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px', borderBottomWidth: '0'
-                                                        }}></div>
+                                                    <div className="absolute top-0 bottom-0 border-[#04BADE] rounded-t-[10px]" style={{ left: '-3.75px', right: '-3.75px', borderTopWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px', borderBottomWidth: '0' }}></div>
                                                 )}
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
-
-                            <div className="grid gap-1.5 relative z-20" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                            <div className="grid gap-1.5 relative z-20 text-[10px] font-bold uppercase tracking-tight text-gray-400 py-1" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
                                 <div />
-                                {days.map((d, i) => (
-                                    <div key={d} className={`text-center text-[10px] font-bold uppercase tracking-tight py-1 ${i === todayIndex ? 'text-[#04BADE]' : 'text-gray-400'}`}>
-                                        {d}
-                                    </div>
-                                ))}
+                                {days.map((d, i) => <div key={d} className={`text-center ${i === todayIndex ? 'text-[#04BADE]' : ''}`}>{d}</div>)}
                             </div>
                         </div>
-
-                        {/* Body Lịch */}
                         <div className="relative pt-2 pb-4 px-2">
                             <div className="relative">
                                 {todayIndex !== -1 && (
@@ -730,41 +604,24 @@
                                             {days.map((d, i) => (
                                                 <div key={d} className="relative h-full">
                                                     {i === todayIndex && (
-                                                        <div className="absolute top-0 bottom-0 border-[#04BADE] rounded-b-[10px]"
-                                                            style={{
-                                                                left: '-3.75px', right: '-3.75px',
-                                                                borderTopWidth: '0', borderLeftWidth: '1.5px', borderRightWidth: '1.5px', borderBottomWidth: '1.5px'
-                                                            }}></div>
+                                                        <div className="absolute top-0 bottom-0 border-[#04BADE] rounded-b-[10px]" style={{ left: '-3.75px', right: '-3.75px', borderTopWidth: '0', borderLeftWidth: '1.5px', borderRightWidth: '1.5px', borderBottomWidth: '1.5px' }}></div>
                                                     )}
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
-
                                 <div className="space-y-1.5 relative z-10">
                                     {times.map((time) => {
                                         const isHour = time.endsWith(':00');
                                         return (
                                             <React.Fragment key={time}>
                                                 {(time === '14:00' || time === '18:00') && (
-                                                    <div className="flex items-center py-2 my-1 relative">
-                                                        <div className="w-[40px]"></div>
-                                                        <div className="flex-1 border-t border-dashed border-indigo-200"></div>
-                                                    </div>
+                                                    <div className="flex items-center py-2 my-1 relative"><div className="w-[40px]"></div><div className="flex-1 border-t border-dashed border-indigo-200"></div></div>
                                                 )}
-
                                                 <div className="grid gap-1.5 relative" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
-                                                    <div className={`flex items-center justify-end pr-2 text-right select-none
-                                                        ${isHour ? 'text-[10px] font-bold text-gray-500' : 'text-[9px] font-medium text-gray-400'}`}>
-                                                        {time}
-                                                    </div>
-
-                                                    {days.map(day => (
-                                                        <div key={day} className="relative">
-                                                            {renderCell(day, time)}
-                                                        </div>
-                                                    ))}
+                                                    <div className={`flex items-center justify-end pr-2 text-right select-none ${isHour ? 'text-[10px] font-bold text-gray-500' : 'text-[9px] font-medium text-gray-400'}`}>{time}</div>
+                                                    {days.map(day => <div key={day} className="relative">{renderCell(day, time)}</div>)}
                                                 </div>
                                             </React.Fragment>
                                         );
