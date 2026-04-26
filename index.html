@@ -50,6 +50,7 @@
             color: #1a1a2e;
         }
 
+        /* Tùy chỉnh thanh cuộn thanh mảnh */
         ::-webkit-scrollbar {
             width: 4px;
             height: 4px;
@@ -60,6 +61,11 @@
             border-radius: 10px;
         }
 
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
         .card {
             background: #fff;
             border-radius: 20px;
@@ -67,9 +73,7 @@
         }
 
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
         .spin {
@@ -77,15 +81,8 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(6px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .fade-in {
@@ -98,14 +95,13 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
 
         const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
         const TIMES = [];
         for (let h = 8; h <= 21; h++) {
             for (const m of ['00', '30']) {
                 const val = h * 100 + parseInt(m);
-                // Bỏ qua giờ nghỉ trưa từ 12:00 đến 13:30
                 if (val >= 1200 && val <= 1330) continue;
                 TIMES.push(`${String(h).padStart(2, '0')}:${m}`);
             }
@@ -127,14 +123,14 @@
         );
 
         const HEAT_STEPS = [
-            { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' }, // 1
-            { bg: '#dcfce7', text: '#15803d', border: '#86efac' }, // 2
-            { bg: '#ecfccb', text: '#3f6212', border: '#bef264' }, // 3
-            { bg: '#fefce8', text: '#854d0e', border: '#fde047' }, // 4
-            { bg: '#fef08a', text: '#92400e', border: '#facc15' }, // 5
-            { bg: '#ffedd5', text: '#9a3412', border: '#fdba74' }, // 6
-            { bg: '#fb923c', text: '#fff', border: '#ea580c' }, // 7
-            { bg: '#ea580c', text: '#fff', border: '#c2410c' }, // 8
+            { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
+            { bg: '#dcfce7', text: '#15803d', border: '#86efac' },
+            { bg: '#ecfccb', text: '#3f6212', border: '#bef264' },
+            { bg: '#fefce8', text: '#854d0e', border: '#fde047' },
+            { bg: '#fef08a', text: '#92400e', border: '#facc15' },
+            { bg: '#ffedd5', text: '#9a3412', border: '#fdba74' },
+            { bg: '#fb923c', text: '#fff', border: '#ea580c' },
+            { bg: '#ea580c', text: '#fff', border: '#c2410c' },
         ];
 
         function heatColor(count) {
@@ -174,7 +170,41 @@
             const [fixed, setFixed] = useState(false);
             const [activeSlot, setActiveSlot] = useState(null);
             const [syncing, setSyncing] = useState(false);
+            const [bookedSlots, setBookedSlots] = useState(new Set());
             const [modalConfig, setModalConfig] = useState(null);
+            const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+            const [tempBookedSlots, setTempBookedSlots] = useState(new Set());
+
+            const grid1Ref = useRef(null);
+            const grid2Ref = useRef(null);
+
+            // Sync scroll logic
+            useEffect(() => {
+                const el1 = grid1Ref.current;
+                const el2 = grid2Ref.current;
+                if (!el1 || !el2) return;
+                let lock = false;
+                const onScroll1 = () => {
+                    if (lock) return;
+                    lock = true;
+                    el2.scrollTop = el1.scrollTop;
+                    el2.scrollLeft = el1.scrollLeft;
+                    window.requestAnimationFrame(() => { lock = false; });
+                };
+                const onScroll2 = () => {
+                    if (lock) return;
+                    lock = true;
+                    el1.scrollTop = el2.scrollTop;
+                    el1.scrollLeft = el2.scrollLeft;
+                    window.requestAnimationFrame(() => { lock = false; });
+                };
+                el1.addEventListener('scroll', onScroll1, { passive: true });
+                el2.addEventListener('scroll', onScroll2, { passive: true });
+                return () => {
+                    el1.removeEventListener('scroll', onScroll1);
+                    el2.removeEventListener('scroll', onScroll2);
+                };
+            }, [user]);
 
             // Auth listener
             useEffect(() => {
@@ -185,16 +215,28 @@
             // Realtime Firestore
             useEffect(() => {
                 if (!user) return;
-                const { db, collection, onSnapshot, query } = window.FB;
+                const { db, collection, onSnapshot, query, doc } = window.FB;
+                
+                // 1. Lắng nghe lịch rảnh của các thành viên
                 const q = query(collection(db, 'schedules'));
-                const unsub = onSnapshot(q, snap => {
+                const unsubSchedules = onSnapshot(q, snap => {
                     const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     setAllSchedules(docs);
                     const mine = docs.find(d => d.id === user.uid);
                     if (mine?.slots) setMySlots(new Set(mine.slots));
                     if (mine?.fixed !== undefined) setFixed(mine.fixed);
                 });
-                return unsub;
+
+                // 2. Lắng nghe thông tin đặt sân chung
+                const unsubBooking = onSnapshot(doc(db, 'metadata', 'booking'), d => {
+                    if (d.exists() && d.data().slots) {
+                        setBookedSlots(new Set(d.data().slots));
+                    } else {
+                        setBookedSlots(new Set());
+                    }
+                });
+
+                return () => { unsubSchedules(); unsubBooking(); };
             }, [user]);
 
             const login = async () => {
@@ -202,9 +244,7 @@
                 try {
                     const { auth, googleProvider, signInWithPopup } = window.FB;
                     await signInWithPopup(auth, googleProvider);
-                } catch (e) {
-                    console.error(e);
-                }
+                } catch (e) { console.error(e); }
                 setLoginLoading(false);
             };
 
@@ -233,7 +273,6 @@
                 const next = new Set(mySlots);
                 next.has(key) ? next.delete(key) : next.add(key);
                 setMySlots(next);
-
                 setSyncing(true);
                 try { await save(next, fixed); } catch (e) { console.error(e); }
                 setSyncing(false);
@@ -243,7 +282,6 @@
                 if (!user) return;
                 const next = !fixed;
                 setFixed(next);
-
                 setSyncing(true);
                 try { await save(mySlots, next); } catch (e) { console.error(e); }
                 setSyncing(false);
@@ -252,14 +290,9 @@
             const handleSelectAll = async () => {
                 if (!user) return;
                 const all = new Set();
-                DAYS.forEach(day => {
-                    TIMES.forEach(time => {
-                        all.add(`${day}-${time}`);
-                    });
-                });
+                DAYS.forEach(day => TIMES.forEach(time => all.add(`${day}-${time}`)));
                 setMySlots(all);
                 setModalConfig(null);
-
                 setSyncing(true);
                 try { await save(all, fixed); } catch (e) { console.error(e); }
                 setSyncing(false);
@@ -270,10 +303,14 @@
                 const empty = new Set();
                 setMySlots(empty);
                 setModalConfig(null);
-
                 setSyncing(true);
                 try { await save(empty, fixed); } catch (e) { console.error(e); }
                 setSyncing(false);
+            };
+
+            const saveBooking = async (slots) => {
+                const { db, doc, setDoc } = window.FB;
+                await setDoc(doc(db, 'metadata', 'booking'), { slots: [...slots] });
             };
 
             const confirmAction = (type) => {
@@ -290,7 +327,6 @@
                 }
             };
 
-            // Heatmap: tính tổng tất cả user kể cả mình
             const heatmap = useMemo(() => {
                 const map = {};
                 allSchedules.forEach(entry => {
@@ -301,7 +337,6 @@
                 return map;
             }, [allSchedules]);
 
-            // Danh sách tên trong 1 slot
             const slotUsers = useMemo(() => {
                 const map = {};
                 allSchedules.forEach(entry => {
@@ -313,22 +348,19 @@
                 return map;
             }, [allSchedules]);
 
-            // ── LOADING ──
             if (user === undefined) return (
                 <div className="min-h-screen flex items-center justify-center bg-gray-50">
                     <div className="w-7 h-7 border-2 border-gray-200 border-t-indigo-500 rounded-full spin" />
                 </div>
             );
 
-            // ── NOT LOGGED IN ──
             if (!user) return <LoginScreen onLogin={login} loading={loginLoading} />;
 
-            // ── MAIN UI ──
             return (
                 <div className="min-h-screen p-4 md:p-6 relative">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1400px] mx-auto items-start">
 
-                        {/* CÁ NHÂN */}
+                        {/* 1. LỊCH CÁ NHÂN */}
                         <section className="lg:col-span-5 card p-5 flex flex-col h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
                             <div className="flex flex-wrap items-center justify-between gap-3 mb-5 shrink-0">
                                 <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#04BADE] flex items-center gap-1.5 whitespace-nowrap">
@@ -339,9 +371,7 @@
                                     <div className="relative group">
                                         <button onClick={toggleFixed}
                                             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold transition-all duration-200 text-[#04BADE]
-                      ${fixed
-                                                    ? 'bg-[#04BADE]/10 border-[#04BADE]/30'
-                                                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
+                                                ${fixed ? 'bg-[#04BADE]/10 border-[#04BADE]/30' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
                                             Cố định
                                             <span className={`w-6 h-3 rounded-full relative transition-colors duration-200 ${fixed ? 'bg-[#04BADE]' : 'bg-gray-300'}`}>
                                                 <span className={`absolute top-0.5 w-2 h-2 rounded-full bg-white shadow transition-all duration-200 ${fixed ? 'left-3.5' : 'left-0.5'}`} />
@@ -355,38 +385,38 @@
                                         Chọn tất cả
                                     </button>
                                     <button onClick={() => confirmAction('CLEAR')} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all whitespace-nowrap">
-                                        Bỏ chọn tất cả
+                                        Xoá hết
                                     </button>
                                 </div>
                             </div>
-                            <TimeGrid days={DAYS} times={TIMES} renderCell={(day, time) => {
+                            <TimeGrid innerRef={grid1Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
                                 const key = `${day}-${time}`;
                                 const sel = mySlots.has(key);
                                 return (
                                     <button key={key} onClick={() => toggleSlot(day, time)}
                                         className={`w-full rounded-xl border h-9 flex items-center justify-center transition-all duration-150
-                      ${sel
-                                                ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]'
-                                                : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40 hover:shadow-sm'}`}>
+                                            ${sel ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40 hover:shadow-sm'}`}>
                                         {sel && <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>}
                                     </button>
                                 );
                             }} />
                         </section>
 
-                        {/* TỔNG HỢP */}
+                        {/* 2. TỔNG HỢP NHÓM */}
                         <section className="lg:col-span-5 card p-5 flex flex-col h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
                             <div className="flex items-center justify-between mb-5 shrink-0">
                                 <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-rose-400 flex items-center gap-1.5">
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
                                     2. Tổng hợp
                                 </h2>
+                                <span className="text-[10px] text-gray-300 font-medium">{allSchedules.length} thành viên</span>
                             </div>
-                            <TimeGrid days={DAYS} times={TIMES} renderCell={(day, time) => {
+                            <TimeGrid innerRef={grid2Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
                                 const key = `${day}-${time}`;
                                 const count = heatmap[key] || 0;
                                 const c = heatColor(count);
                                 const isActive = activeSlot === key;
+                                const isBooked = bookedSlots.has(key);
                                 return (
                                     <button key={key}
                                         onClick={() => setActiveSlot(isActive ? null : key)}
@@ -397,45 +427,58 @@
                                             outline: isActive ? '2px solid #c7d2fe' : 'none',
                                             outlineOffset: '1px'
                                         }}
-                                        className="w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 hover:brightness-95">
+                                        className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 hover:brightness-95">
                                         {count > 0 ? count : ''}
+                                        {isBooked && (
+                                            <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm" title="Đã đặt sân">🏸</span>
+                                        )}
                                     </button>
                                 );
                             }} />
                         </section>
 
-                        {/* SIDEBAR */}
+                        {/* 3. SIDEBAR INFO */}
                         <aside className="lg:col-span-2">
                             <div className="flex flex-col gap-4 sticky top-4 h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
-                                <div className="card p-4 shrink-0">
-                                    <div className="flex items-center justify-between mb-4">
+                                <div className="card p-4 shrink-0 flex flex-col gap-4">
+                                    <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
                                                 style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>📅</div>
                                             <span className="font-bold text-sm tracking-tight">Lịch Rảnh</span>
                                         </div>
-                                        <div className={`flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase ${syncing ? 'text-indigo-400' : 'text-gray-400'}`}>
+                                        <div className={`flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase ${syncing ? 'text-[#04BADE]' : 'text-gray-300'}`}>
                                             <SyncIcon spin={syncing} /> {syncing ? 'Saving' : 'Saved'}
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
-                                        <div className="flex items-center gap-2">
-                                            {user.photoURL ? (
-                                                <img src={user.photoURL} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
-                                            ) : (
-                                                <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[11px] font-bold">
-                                                    {user.displayName?.charAt(0).toUpperCase() || 'U'}
-                                                </div>
-                                            )}
-                                            <span className="text-xs font-medium text-gray-700 max-w-[80px] truncate">{user.displayName}</span>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
+                                            {user.photoURL
+                                                ? <img src={user.photoURL} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                                                : <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[11px] font-bold">{user.displayName?.charAt(0)}</div>
+                                            }
+                                            <span className="text-xs font-medium text-gray-700 truncate">{user.displayName}</span>
                                         </div>
-                                        <button onClick={logout} className="text-[10px] text-gray-400 hover:text-rose-500 transition-colors font-medium ml-2">Đăng xuất</button>
+                                        <button
+                                            onClick={() => {
+                                                setTempBookedSlots(new Set(bookedSlots));
+                                                setIsManageModalOpen(true);
+                                            }}
+                                            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#04BADE]/5 text-[#04BADE] hover:bg-[#04BADE]/10 border border-[#04BADE]/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"
+                                        >
+                                            <span className="text-[14px]">🏸</span>
+                                            Quản lý đặt sân
+                                        </button>
+                                        <button onClick={logout} className="w-full text-[10px] text-gray-400 hover:text-red-400 transition-colors font-medium text-center">Đăng xuất</button>
                                     </div>
                                 </div>
                                 <div className="card p-5 flex flex-col flex-1 min-h-0">
-                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 mb-4 pb-3 border-b border-gray-50 shrink-0">
-                                        Thành viên rảnh
-                                    </h2>
+                                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-50 shrink-0">
+                                        <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">
+                                            Thành viên rảnh
+                                        </h2>
+                                    </div>
+
                                     {!activeSlot ? (
                                         <div className="flex flex-col items-center justify-center py-14 text-gray-200 text-center flex-1">
                                             <svg className="w-6 h-6 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
@@ -452,7 +495,7 @@
                                                 {(slotUsers[activeSlot] || []).length === 0 ? (
                                                     <p className="text-[10px] text-center py-8 text-gray-300 italic">Trống</p>
                                                 ) : (slotUsers[activeSlot] || []).map((u, i) => (
-                                                    <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-indigo-100 transition-all">
+                                                    <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-[#04BADE]/30 transition-all">
                                                         {u.photo
                                                             ? <img src={u.photo} className="w-7 h-7 rounded-lg object-cover" referrerPolicy="no-referrer" />
                                                             : <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center text-[10px] font-bold">{u.name.charAt(0).toUpperCase()}</div>
@@ -467,7 +510,60 @@
                             </div>
                         </aside>
 
-                        {/* MODAL */}
+                        {/* MODAL QUẢN LÝ ĐẶT SÂN */}
+                        {isManageModalOpen && (
+                            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                                <div className="bg-white p-5 rounded-3xl max-w-3xl w-full shadow-2xl flex flex-col h-[85vh]">
+                                    <div className="flex items-center justify-between mb-4 shrink-0">
+                                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                            <span>🏸</span> Báo đặt sân thực tế
+                                        </h3>
+                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Bấm ô để chọn/hủy</p>
+                                    </div>
+                                    <div className="flex-1 min-h-0 bg-gray-50 rounded-2xl border border-gray-100 p-2 flex flex-col">
+                                        <TimeGrid days={DAYS} times={TIMES} renderCell={(day, time) => {
+                                            const key = `${day}-${time}`;
+                                            const count = heatmap[key] || 0;
+                                            const c = heatColor(count);
+                                            const isBooked = tempBookedSlots.has(key);
+                                            return (
+                                                <button key={key}
+                                                    onClick={() => {
+                                                        const next = new Set(tempBookedSlots);
+                                                        next.has(key) ? next.delete(key) : next.add(key);
+                                                        setTempBookedSlots(next);
+                                                    }}
+                                                    style={{
+                                                        background: isBooked ? '#04BADE' : c.bg,
+                                                        color: isBooked ? '#fff' : c.text,
+                                                        borderColor: isBooked ? '#03a6c7' : c.border
+                                                    }}
+                                                    className={`w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 relative hover:brightness-95 shadow-sm`}>
+                                                    {count > 0 ? count : ''}
+                                                    {isBooked && (
+                                                        <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm">🏸</span>
+                                                    )}
+                                                </button>
+                                            );
+                                        }} />
+                                    </div>
+                                    <div className="flex gap-3 justify-end mt-4 shrink-0">
+                                        <button onClick={() => setIsManageModalOpen(false)} className="px-5 py-2.5 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">
+                                            Hủy
+                                        </button>
+                                        <button onClick={async () => {
+                                            setBookedSlots(tempBookedSlots);
+                                            try { await saveBooking(tempBookedSlots); } catch (e) { console.error(e); }
+                                            setIsManageModalOpen(false);
+                                        }} className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20">
+                                            Lưu thay đổi
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL XÁC NHẬN */}
                         {modalConfig && (
                             <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
                                 <div className="bg-white p-6 rounded-2xl max-w-xs w-full shadow-2xl text-center">
@@ -494,8 +590,7 @@
         }
 
         // Reusable TimeGrid Component
-        function TimeGrid({ days, times, renderCell }) {
-            // Lấy thứ hiện tại theo múi giờ GMT+7
+        function TimeGrid({ days, times, renderCell, innerRef }) {
             const todayStr = useMemo(() => {
                 const d = new Date();
                 const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
@@ -508,11 +603,8 @@
 
             return (
                 <div className="overflow-x-auto flex-1 flex flex-col min-h-0">
-                    <div style={{ minWidth: '460px' }} className="flex-1 overflow-y-auto relative custom-scrollbar">
-
-                        {/* --- 1. STICKY HEADER --- */}
+                    <div ref={innerRef} style={{ minWidth: '460px' }} className="flex-1 overflow-y-auto relative custom-scrollbar">
                         <div className="sticky top-0 z-40 bg-white pt-3 pb-2 px-2 border-b border-gray-100">
-                            {/* Khung chiếu Header (Cố định cùng Header) */}
                             {todayIndex !== -1 && (
                                 <div className="absolute inset-0 pointer-events-none z-10 px-2" style={{ top: '1px', bottom: '-1px' }}>
                                     <div className="grid h-full gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
@@ -531,8 +623,6 @@
                                     </div>
                                 </div>
                             )}
-
-                            {/* Tiêu đề Ngày */}
                             <div className="grid gap-1.5 relative z-20" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
                                 <div />
                                 {days.map((d, i) => (
@@ -542,11 +632,8 @@
                                 ))}
                             </div>
                         </div>
-
-                        {/* --- 2. SCROLLABLE BODY --- */}
                         <div className="relative pt-2 pb-4 px-2">
                             <div className="relative">
-                                {/* Khung chiếu Body (Trượt theo cuộn chuột) */}
                                 {todayIndex !== -1 && (
                                     <div className="absolute inset-0 pointer-events-none z-20" style={{ top: '-16px', bottom: '-4px' }}>
                                         <div className="grid h-full gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
@@ -565,31 +652,24 @@
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Các ô Thời gian & Ca rảnh */}
                                 <div className="space-y-1.5 relative z-10">
                                     {times.map((time, timeIndex) => {
                                         const isHour = time.endsWith(':00');
                                         const isAfternoonStart = time === '14:00';
-
+                                        const isEveningStart = time === '18:00';
                                         return (
                                             <React.Fragment key={time}>
-                                                {/* Dải phân cách buổi chiều */}
-                                                {isAfternoonStart && (
+                                                {(isAfternoonStart || isEveningStart) && (
                                                     <div className="flex items-center py-2 my-1 relative">
                                                         <div className="w-[40px]"></div>
                                                         <div className="flex-1 border-t border-dashed border-indigo-200"></div>
                                                     </div>
                                                 )}
-
-                                                {/* Từng hàng giờ */}
                                                 <div className="grid gap-1.5 relative" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
                                                     <div className={`flex items-center justify-end pr-2 text-right select-none
                                                         ${isHour ? 'text-[10px] font-bold text-gray-500' : 'text-[9px] font-medium text-gray-400'}`}>
                                                         {time}
                                                     </div>
-
-                                                    {/* Render các ô cho mỗi ngày trong hàng */}
                                                     {days.map(day => (
                                                         <div key={day} className="relative">
                                                             {renderCell(day, time)}

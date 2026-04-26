@@ -58,9 +58,22 @@ async function run() {
         }
     });
 
-    if (count > 0) {
+    // Reset lịch đặt sân thực tế (metadata/booking)
+    const bookingRef = db.collection('metadata').doc('booking');
+    const bookingDoc = await bookingRef.get();
+    if (bookingDoc.exists) {
+        const bData = bookingDoc.data();
+        const bSlots = bData.slots ?? [];
+        const bFiltered = bSlots.filter(slot => !slot.startsWith(`${todayKey}-`));
+        if (bFiltered.length !== bSlots.length) {
+            batch.update(bookingRef, { slots: bFiltered });
+            console.log(`Cleared booking slots for ${todayKey}`);
+        }
+    }
+
+    if (count > 0 || batch._ops.length > 0) {
         await batch.commit();
-        console.log(`Updated ${count} user(s).`);
+        console.log(`Updated ${count} user(s) and metadata.`);
     } else {
         console.log('No slots to clear today.');
     }
