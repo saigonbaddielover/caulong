@@ -79,3 +79,16 @@ Cần set GitHub Secret `FIREBASE_SERVICE_ACCOUNT` = nội dung file JSON servic
 ```bash
 firebase deploy --only hosting
 ```
+
+1. EZB Đằng Hải - 0779766333 - 84 Lũng Bắc
+2. EZB Cầu Niệm - 0934275222 - 22 Tân Hà
+3. EZB An Đồng - 0369633444 - 87 đường 302
+4. EZB Văn Cao - 0914616818 - 14/333B Văn Cao
+5. Phú Cường - 0333766333 - 135 Quán Trữ
+6. Hải Tiến -  0906903555 - lô 9 Lê Hồng Phong
+7. Giang Lakaika - 0945433979 - 50 An Trực
+8. TD - 0971186416 - 34/3B Lê Hồng Phong
+9. Phoenix 1 - 0976171250 - số 28, ngõ 739, Nguyễn Văn Linh
+10. Phoenix 2 - 0976171250 - ngõ Nguyễn Sơn Hà, 727 Nguyễn Văn Linh
+
+0976171250

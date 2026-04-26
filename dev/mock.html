@@ -33,6 +33,11 @@
             border-radius: 10px;
         }
 
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
         .card {
             background: #fff;
             border-radius: 20px;
@@ -89,7 +94,20 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
 
-        // ── MOCK CONFIG ───────────────────────────────────────────
+        // ── DATA CONFIG ───────────────────────────────────────────
+        const COURTS = [
+            { name: 'EZB Đằng Hải', phone: '0779766333', address: '84 Lũng Bắc' },
+            { name: 'EZB Cầu Niệm', phone: '0934275222', address: '22 Tân Hà' },
+            { name: 'EZB An Đồng', phone: '0369633444', address: '87 đường 302' },
+            { name: 'EZB Văn Cao', phone: '0914616818', address: '14/333B Văn Cao' },
+            { name: 'Phú Cường', phone: '0333766333', address: '135 Quán Trữ' },
+            { name: 'Hải Tiến', phone: '0906903555', address: 'lô 9 Lê Hồng Phong' },
+            { name: 'Giang Lakaika', phone: '0945433979', address: '50 An Trực' },
+            { name: 'TD', phone: '0971186416', address: '34/3B Lê Hồng Phong' },
+            { name: 'Phoenix 1', phone: '0976171250', address: 'Số 28, ngõ 739, Nguyễn Văn Linh' },
+            { name: 'Phoenix 2', phone: '0976171250', address: 'Ngõ Nguyễn Sơn Hà, 727 Nguyễn Văn Linh' },
+        ];
+
         const MOCK_ME = {
             uid: 'user-me',
             displayName: 'Manh Nguyen',
@@ -99,42 +117,42 @@
         const MOCK_SCHEDULES = [
             {
                 id: 'user-me', name: 'Manh Nguyen', photo: null,
-                slots: ['T2-08:00', 'T3-08:00', 'T4-08:00', 'T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00', 'T2-09:00', 'T2-09:30', 'T2-10:00', 'T2-10:30']
+                slots: ['T2-08:00', 'T3-08:00', 'T4-08:00', 'T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00']
             },
             {
                 id: 'u2', name: 'An Tran', photo: null,
-                slots: ['T3-08:00', 'T4-08:00', 'T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00', 'T2-09:00', 'T2-09:30', 'T2-10:00', 'T2-10:30']
+                slots: ['T3-08:00', 'T4-08:00', 'T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00']
             },
             {
                 id: 'u3', name: 'Binh Le', photo: null,
-                slots: ['T4-08:00', 'T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00', 'T2-09:00', 'T2-09:30', 'T2-10:00', 'T2-10:30']
+                slots: ['T4-08:00', 'T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00']
             },
             {
                 id: 'u4', name: 'Chi Pham', photo: null,
-                slots: ['T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00', 'T2-09:00', 'T2-09:30', 'T2-10:00', 'T2-10:30']
+                slots: ['T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00']
             },
             {
-                id: 'u5', name: 'Dung Nguyen Minh', photo: null,
-                slots: ['T6-08:00', 'T7-08:00', 'CN-08:00', 'T2-09:00', 'T2-09:30', 'T2-10:00', 'T2-10:30']
+                id: 'u5', name: 'Dung Nguyen', photo: null,
+                slots: ['T6-08:00', 'T7-08:00', 'CN-08:00']
             },
             {
                 id: 'u6', name: 'Em', photo: null,
-                slots: ['T7-08:00', 'CN-08:00', 'T2-09:00', 'T2-09:30', 'T2-10:00', 'T2-10:30']
+                slots: ['T7-08:00', 'CN-08:00']
             },
             {
                 id: 'u7', name: 'Gia Huy', photo: null,
-                slots: ['CN-08:00', 'T2-09:00', 'T2-09:30', 'T2-10:00', 'T2-10:30']
+                slots: ['CN-08:00', 'T2-09:00']
             },
             {
                 id: 'u8', name: 'Huong Dao', photo: null,
-                slots: ['T2-09:00', 'T2-09:30', 'T2-10:00', 'T2-10:30']
+                slots: ['T2-09:00', 'T2-09:30']
             },
             {
                 id: 'u9', name: 'Ivan Nguyen', photo: null,
-                slots: ['T2-09:30', 'T2-10:00', 'T2-10:30']
+                slots: ['T2-09:30', 'T2-10:00']
             },
             {
-                id: 'u10', name: 'Jenny Tran Thi Bich Nga', photo: null,
+                id: 'u10', name: 'Jenny Tran', photo: null,
                 slots: ['T2-10:00', 'T2-10:30']
             },
             {
@@ -178,14 +196,21 @@
         function App() {
             const [mySlots, setMySlots] = useState(new Set(MOCK_SCHEDULES[0].slots));
             const [fixed, setFixed] = useState(false);
-            const [activeSlot, setActiveSlot] = useState('T2-10:30');
+            const [activeSlot, setActiveSlot] = useState('T2-08:00');
             const [modalConfig, setModalConfig] = useState(null);
+            const [syncing, setSyncing] = useState(false);
 
-            const [bookedSlots, setBookedSlots] = useState(new Set());
+            const [bookedSlots, setBookedSlots] = useState({
+                'T2-08:00': 'EZB Đằng Hải',
+                'T2-09:00': 'EZB Đằng Hải'
+            });
+
             const [isManageModalOpen, setIsManageModalOpen] = useState(false);
-            const [tempBookedSlots, setTempBookedSlots] = useState(new Set());
+            const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
+            const [isSelectCourtModalOpen, setIsSelectCourtModalOpen] = useState(false);
+            const [tempBookedKeys, setTempBookedKeys] = useState(new Set());
+            const [selectedCourt, setSelectedCourt] = useState(COURTS[0].name);
 
-            // Refs để can thiệp trực tiếp vào DOM cuộn mượt (Native)
             const grid1Ref = useRef(null);
             const grid2Ref = useRef(null);
 
@@ -195,7 +220,6 @@
                 if (!el1 || !el2) return;
 
                 let lock = false;
-
                 const onScroll1 = () => {
                     if (lock) return;
                     lock = true;
@@ -212,7 +236,6 @@
                     window.requestAnimationFrame(() => { lock = false; });
                 };
 
-                // passive: true giúp trình duyệt cuộn mượt hơn vì không phải chờ JS
                 el1.addEventListener('scroll', onScroll1, { passive: true });
                 el2.addEventListener('scroll', onScroll2, { passive: true });
 
@@ -229,9 +252,15 @@
                     next.has(key) ? next.delete(key) : next.add(key);
                     return next;
                 });
+                setSyncing(true);
+                setTimeout(() => setSyncing(false), 500);
             };
 
-            const toggleFixed = () => setFixed(!fixed);
+            const toggleFixed = () => {
+                setFixed(!fixed);
+                setSyncing(true);
+                setTimeout(() => setSyncing(false), 500);
+            };
 
             const handleSelectAll = () => {
                 const all = new Set();
@@ -271,7 +300,9 @@
             const heatmap = useMemo(() => {
                 const map = {};
                 allSchedules.forEach(entry => {
-                    entry.slots.forEach(slot => { map[slot] = (map[slot] || 0) + 1; });
+                    entry.slots.forEach(slot => {
+                        map[slot] = (map[slot] || 0) + 1;
+                    });
                 });
                 return map;
             }, [allSchedules]);
@@ -287,11 +318,28 @@
                 return map;
             }, [allSchedules]);
 
+            const handleSaveBooking = () => {
+                const newBooked = { ...bookedSlots };
+                // Xoá những ca cũ không còn nằm trong danh sách chọn hiện tại (nếu cần sync)
+                // Tuy nhiên ở bản mock này ta chỉ đơn giản là gán sân mới cho những cái đang chọn
+                tempBookedKeys.forEach(key => {
+                    newBooked[key] = selectedCourt;
+                });
+                // Bonus: Xoá những key mà người dùng bỏ chọn trong Modal 1
+                Object.keys(newBooked).forEach(k => {
+                    if (!tempBookedKeys.has(k)) delete newBooked[k];
+                });
+                
+                setBookedSlots(newBooked);
+                setIsSelectCourtModalOpen(false);
+                setIsManageModalOpen(false);
+            };
+
             return (
                 <div className="min-h-screen p-4 md:p-6 relative">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1400px] mx-auto items-start">
 
-                        {/* CÁ NHÂN */}
+                        {/* 1. CÁ NHÂN */}
                         <section className="lg:col-span-5 card p-5 flex flex-col h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
                             <div className="flex flex-wrap items-center justify-between gap-3 mb-5 shrink-0">
                                 <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#04BADE] flex items-center gap-1.5 whitespace-nowrap">
@@ -302,9 +350,7 @@
                                     <div className="relative group">
                                         <button onClick={toggleFixed}
                                             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold transition-all duration-200 text-[#04BADE]
-                      ${fixed
-                                                    ? 'bg-[#04BADE]/10 border-[#04BADE]/30'
-                                                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
+                      ${fixed ? 'bg-[#04BADE]/10 border-[#04BADE]/30' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
                                             Cố định
                                             <span className={`w-6 h-3 rounded-full relative transition-colors duration-200 ${fixed ? 'bg-[#04BADE]' : 'bg-gray-300'}`}>
                                                 <span className={`absolute top-0.5 w-2 h-2 rounded-full bg-white shadow transition-all duration-200 ${fixed ? 'left-3.5' : 'left-0.5'}`} />
@@ -318,7 +364,7 @@
                                         Chọn tất cả
                                     </button>
                                     <button onClick={() => confirmAction('CLEAR')} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all whitespace-nowrap">
-                                        Bỏ chọn tất cả
+                                        Bỏ chọn
                                     </button>
                                 </div>
                             </div>
@@ -328,29 +374,28 @@
                                 return (
                                     <button key={key} onClick={() => toggleSlot(day, time)}
                                         className={`w-full rounded-xl border h-9 flex items-center justify-center transition-all duration-150
-                      ${sel
-                                                ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]'
-                                                : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40 hover:shadow-sm'}`}>
+                       ${sel ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40 hover:shadow-sm'}`}>
                                         {sel && <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>}
                                     </button>
                                 );
                             }} />
                         </section>
 
-                        {/* TỔNG HỢP */}
+                        {/* 2. TỔNG HỢP */}
                         <section className="lg:col-span-5 card p-5 flex flex-col h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
                             <div className="flex items-center justify-between mb-5 shrink-0">
                                 <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-rose-400 flex items-center gap-1.5">
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
                                     2. Tổng hợp
                                 </h2>
+                                <span className="text-[10px] text-gray-300 font-medium">{allSchedules.length} thành viên</span>
                             </div>
                             <TimeGrid innerRef={grid2Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
                                 const key = `${day}-${time}`;
                                 const count = heatmap[key] || 0;
                                 const c = heatColor(count);
                                 const isActive = activeSlot === key;
-                                const isBooked = bookedSlots.has(key);
+                                const isBooked = !!bookedSlots[key];
                                 return (
                                     <button key={key}
                                         onClick={() => setActiveSlot(isActive ? null : key)}
@@ -364,7 +409,7 @@
                                         className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 hover:brightness-95">
                                         {count > 0 ? count : ''}
                                         {isBooked && (
-                                            <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm" title="Đã đặt sân">🏸</span>
+                                            <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm" title={bookedSlots[key]}>🏸</span>
                                         )}
                                     </button>
                                 );
@@ -377,12 +422,11 @@
                                 <div className="card p-4 shrink-0 flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
-                                                style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>📅</div>
+                                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs">📅</div>
                                             <span className="font-bold text-sm tracking-tight">Lịch Rảnh</span>
                                         </div>
-                                        <div className="flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase text-gray-400">
-                                            <SyncIcon spin={false} /> MOCK
+                                        <div className={`flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase ${syncing ? 'text-indigo-400' : 'text-gray-300'}`}>
+                                            <SyncIcon spin={syncing} /> {syncing ? 'Saving' : 'MOCK'}
                                         </div>
                                     </div>
                                     <div className="space-y-2">
@@ -392,7 +436,7 @@
                                         </div>
                                         <button
                                             onClick={() => {
-                                                setTempBookedSlots(new Set(bookedSlots));
+                                                setTempBookedKeys(new Set(Object.keys(bookedSlots)));
                                                 setIsManageModalOpen(true);
                                             }}
                                             className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"
@@ -400,8 +444,16 @@
                                             <span className="text-[14px]">🏸</span>
                                             Quản lý đặt sân
                                         </button>
+                                        <button
+                                            onClick={() => setIsCourtModalOpen(true)}
+                                            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm"
+                                        >
+                                            <span className="text-[14px]">📍</span>
+                                            Danh sách sân
+                                        </button>
                                     </div>
                                 </div>
+
                                 <div className="card p-5 flex flex-col flex-1 min-h-0">
                                     <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-50 shrink-0">
                                         <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">
@@ -411,11 +463,21 @@
 
                                     {!activeSlot ? (
                                         <div className="flex flex-col items-center justify-center py-14 text-gray-200 text-center flex-1">
-                                            <svg className="w-6 h-6 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
                                             <p className="text-[9px] font-semibold uppercase tracking-widest">Chọn ô tổng hợp</p>
                                         </div>
                                     ) : (
                                         <div className="fade-in space-y-3 flex flex-col flex-1 min-h-0">
+                                            {/* HIỂN THỊ SÂN Ở ĐÂY NÈ MÀY */}
+                                            {bookedSlots[activeSlot] && (
+                                                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center gap-2 shrink-0 shadow-sm animate-pulse">
+                                                    <span className="text-base">🏸</span>
+                                                    <div>
+                                                        <p className="text-[8px] font-bold text-emerald-400 uppercase tracking-wider">Đã đặt sân</p>
+                                                        <p className="text-[11px] font-bold text-emerald-700">{bookedSlots[activeSlot]}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100 shrink-0">
                                                 <p className="text-[10px] font-bold text-gray-500 tracking-tight">
                                                     {activeSlot.replace('-', ' • ')}
@@ -440,13 +502,13 @@
                             </div>
                         </aside>
 
-                        {/* COURT MODAL */}
+                        {/* MODAL 1: CHỌN Ô ĐẶT SÂN */}
                         {isManageModalOpen && (
                             <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
                                 <div className="bg-white p-5 rounded-3xl max-w-3xl w-full shadow-2xl flex flex-col h-[85vh]">
                                     <div className="flex items-center justify-between mb-4 shrink-0">
                                         <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                                            <span>🏸</span> Báo đặt sân thực tế
+                                            <span>🏸</span> Chọn ca đặt sân thực tế
                                         </h3>
                                         <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Bấm ô để chọn/hủy</p>
                                     </div>
@@ -456,26 +518,22 @@
                                             const key = `${day}-${time}`;
                                             const count = heatmap[key] || 0;
                                             const c = heatColor(count);
-                                            const isBooked = tempBookedSlots.has(key);
+                                            const isSelected = tempBookedKeys.has(key);
                                             return (
                                                 <button key={key}
                                                     onClick={() => {
-                                                        const next = new Set(tempBookedSlots);
-                                                        if (next.has(key)) {
-                                                            next.delete(key);
-                                                        } else {
-                                                            next.add(key);
-                                                        }
-                                                        setTempBookedSlots(next);
+                                                        const next = new Set(tempBookedKeys);
+                                                        next.has(key) ? next.delete(key) : next.add(key);
+                                                        setTempBookedKeys(next);
                                                     }}
                                                     style={{
-                                                        background: isBooked ? '#04BADE' : c.bg,
-                                                        color: isBooked ? '#fff' : c.text,
-                                                        borderColor: isBooked ? '#03a6c7' : c.border
+                                                        background: isSelected ? '#04BADE' : c.bg,
+                                                        color: isSelected ? '#fff' : c.text,
+                                                        borderColor: isSelected ? '#03a6c7' : c.border
                                                     }}
                                                     className={`w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 relative hover:brightness-95 shadow-sm`}>
                                                     {count > 0 ? count : ''}
-                                                    {isBooked && (
+                                                    {isSelected && (
                                                         <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm">🏸</span>
                                                     )}
                                                 </button>
@@ -487,11 +545,104 @@
                                         <button onClick={() => setIsManageModalOpen(false)} className="px-5 py-2.5 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">
                                             Hủy
                                         </button>
-                                        <button onClick={() => {
-                                            setBookedSlots(tempBookedSlots);
-                                            setIsManageModalOpen(false);
-                                        }} className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20">
-                                            Lưu thay đổi
+                                        <button 
+                                            onClick={() => {
+                                                if (tempBookedKeys.size === 0) {
+                                                    setBookedSlots({});
+                                                    setIsManageModalOpen(false);
+                                                } else {
+                                                    setIsSelectCourtModalOpen(true);
+                                                }
+                                            }} 
+                                            className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20"
+                                        >
+                                            {tempBookedKeys.size > 0 ? 'Chọn sân' : 'Xoá tất cả đặt sân'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL 2: CHỌN TÊN SÂN */}
+                        {isSelectCourtModalOpen && (
+                            <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[110] px-4 fade-in">
+                                <div className="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
+                                    <div className="text-center mb-6">
+                                        <div className="w-14 h-14 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-800">Chọn sân muốn đặt</h3>
+                                        <p className="text-xs text-gray-400 mt-1">Đã chọn {tempBookedKeys.size} ca rảnh</p>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">Sân hiện có</label>
+                                            <select 
+                                                value={selectedCourt} 
+                                                onChange={(e) => setSelectedCourt(e.target.value)} 
+                                                className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-semibold text-gray-700 outline-none focus:border-[#04BADE] transition-all"
+                                            >
+                                                {COURTS.map((c, i) => (
+                                                    <option key={i} value={c.name}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="flex gap-3 pt-2">
+                                            <button onClick={() => setIsSelectCourtModalOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 transition">
+                                                Quay lại
+                                            </button>
+                                            <button onClick={handleSaveBooking} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20">
+                                                Lưu
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* COURT LIST MODAL */}
+                        {isCourtModalOpen && (
+                            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                                <div className="bg-white p-6 rounded-3xl max-w-4xl w-full shadow-2xl flex flex-col max-h-[85vh]">
+                                    <div className="flex items-center justify-between mb-6 shrink-0">
+                                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                            <span className="text-2xl">📍</span> Danh sách sân cầu lông
+                                        </h3>
+                                        <button onClick={() => setIsCourtModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 overflow-auto custom-scrollbar border border-gray-100 rounded-2xl bg-gray-50/50">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-white sticky top-0 z-10 shadow-sm">
+                                                    <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 w-12 text-center">#</th>
+                                                    <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100">Tên sân</th>
+                                                    <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100">Số điện thoại</th>
+                                                    <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100">Địa chỉ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {COURTS.map((court, idx) => (
+                                                    <tr key={idx} className="hover:bg-white transition-colors group">
+                                                        <td className="p-4 text-xs font-bold text-gray-300 text-center">{idx + 1}</td>
+                                                        <td className="p-4 text-xs font-bold text-[#04BADE]">{court.name}</td>
+                                                        <td className="p-4 text-xs font-semibold text-gray-600 group-hover:text-emerald-500 transition-colors">
+                                                            <a href={`tel:${court.phone}`} className="flex items-center gap-1.5">
+                                                                {court.phone}
+                                                            </a>
+                                                        </td>
+                                                        <td className="p-4 text-xs text-gray-500 leading-relaxed">{court.address}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div className="mt-6 text-center">
+                                        <button onClick={() => setIsCourtModalOpen(false)} className="px-8 py-3 rounded-2xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20">
+                                            Đóng
                                         </button>
                                     </div>
                                 </div>
@@ -502,13 +653,10 @@
                         {modalConfig && (
                             <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
                                 <div className="bg-white p-6 rounded-2xl max-w-xs w-full shadow-2xl text-center">
-                                    <div className="w-12 h-12 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                    </div>
                                     <h3 className="text-lg font-bold mb-2 text-gray-800">Xác nhận</h3>
                                     <p className="text-sm text-gray-500 mb-6">{modalConfig.message}</p>
                                     <div className="flex gap-3 justify-center">
-                                        <button onClick={() => setModalConfig(null)} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">
+                                        <button onClick={() => setModalConfig(null)} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 transition">
                                             Tao chưa
                                         </button>
                                         <button onClick={modalConfig.onConfirm} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition">
@@ -524,9 +672,9 @@
             );
         }
 
-        // Reusable TimeGrid Component
+        // ── COMPONENTS ────────────────────────────────────────────
+
         function TimeGrid({ days, times, renderCell, innerRef }) {
-            // Lấy thứ hiện tại theo múi giờ GMT+7
             const todayStr = useMemo(() => {
                 const d = new Date();
                 const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
@@ -541,9 +689,8 @@
                 <div className="overflow-x-auto flex-1 flex flex-col min-h-0">
                     <div ref={innerRef} style={{ minWidth: '460px' }} className="flex-1 overflow-y-auto relative custom-scrollbar">
 
-                        {/* --- 1. STICKY HEADER --- */}
+                        {/* Header Ngày */}
                         <div className="sticky top-0 z-40 bg-white pt-3 pb-2 px-2 border-b border-gray-100">
-                            {/* Khung chiếu Header (Cố định cùng Header) */}
                             {todayIndex !== -1 && (
                                 <div className="absolute inset-0 pointer-events-none z-10 px-2" style={{ top: '1px', bottom: '-1px' }}>
                                     <div className="grid h-full gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
@@ -563,7 +710,6 @@
                                 </div>
                             )}
 
-                            {/* Tiêu đề Ngày */}
                             <div className="grid gap-1.5 relative z-20" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
                                 <div />
                                 {days.map((d, i) => (
@@ -574,10 +720,9 @@
                             </div>
                         </div>
 
-                        {/* --- 2. SCROLLABLE BODY --- */}
+                        {/* Body Lịch */}
                         <div className="relative pt-2 pb-4 px-2">
                             <div className="relative">
-                                {/* Khung chiếu Body (Trượt theo cuộn chuột) */}
                                 {todayIndex !== -1 && (
                                     <div className="absolute inset-0 pointer-events-none z-20" style={{ top: '-16px', bottom: '-4px' }}>
                                         <div className="grid h-full gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
@@ -597,16 +742,12 @@
                                     </div>
                                 )}
 
-                                {/* Các ô Thời gian & Ca rảnh */}
                                 <div className="space-y-1.5 relative z-10">
-                                    {times.map((time, timeIndex) => {
+                                    {times.map((time) => {
                                         const isHour = time.endsWith(':00');
-                                        const isAfternoonStart = time === '14:00';
-                                        const isEveningStart = time === '18:00';
-
                                         return (
                                             <React.Fragment key={time}>
-                                                {(isAfternoonStart || isEveningStart) && (
+                                                {(time === '14:00' || time === '18:00') && (
                                                     <div className="flex items-center py-2 my-1 relative">
                                                         <div className="w-[40px]"></div>
                                                         <div className="flex-1 border-t border-dashed border-indigo-200"></div>
