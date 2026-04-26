@@ -16,12 +16,12 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDflvBvXYn0z1F5vuD5osLlpBFuIR_ngoE",
-            authDomain: "caulong-2974b.firebaseapp.com",
+            authDomain: "caulong-2974b.web.app",
             projectId: "caulong-2974b",
             storageBucket: "caulong-2974b.firebasestorage.app",
             messagingSenderId: "450431128394",
@@ -36,7 +36,8 @@
         window.FB = {
             auth, db, googleProvider,
             doc, setDoc, onSnapshot, collection, query,
-            signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged
+            signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged,
+            setPersistence, browserLocalPersistence
         };
     </script>
 
@@ -489,9 +490,20 @@
             }, [user]);
 
             useEffect(() => {
-                const { auth, onAuthStateChanged, getRedirectResult } = window.FB;
-                // Handle redirect result for mobile
-                getRedirectResult(auth).catch(e => console.error("Redirect error:", e));
+                const { auth, onAuthStateChanged, getRedirectResult, setPersistence, browserLocalPersistence } = window.FB;
+                
+                const initAuth = async () => {
+                    try {
+                        // Force local persistence
+                        await setPersistence(auth, browserLocalPersistence);
+                        // Handle redirect result for mobile
+                        await getRedirectResult(auth);
+                    } catch (e) {
+                        console.error("Auth Init Error:", e);
+                    }
+                };
+
+                initAuth();
                 return onAuthStateChanged(auth, u => setUser(u ?? null));
             }, []);
 
