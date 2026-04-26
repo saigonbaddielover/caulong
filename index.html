@@ -654,10 +654,15 @@
                             }} />
                         </section>
 
-                        <aside className="order-1 lg:order-none lg:col-span-2 flex flex-col gap-4 lg:h-[calc(100vh-48px)] lg:sticky lg:top-4">
+                        <div className="order-1 lg:order-none lg:col-span-2 lg:row-span-2 lg:sticky lg:top-4 flex flex-col gap-4 lg:h-[calc(100vh-48px)]">
                             <SidebarTop syncing={syncing} user={user} onOpenManage={() => { setNewSelection(new Set()); setDeleteSelection(new Set()); setIsManageModalOpen(true); }} setIsCourtModalOpen={setIsCourtModalOpen} logout={logout} />
+                            <div className="hidden lg:flex flex-col flex-1 min-h-0">
+                                <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
+                            </div>
+                        </div>
+                        <div className="order-4 lg:hidden">
                             <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
-                        </aside>
+                        </div>
 
                         {isManageModalOpen && <ManageBookingModal heatmap={heatmap} bookedSlots={bookedSlots} newSelection={newSelection} setNewSelection={setNewSelection} deleteSelection={deleteSelection} setDeleteSelection={setDeleteSelection} onClose={() => setIsManageModalOpen(false)} onSelectCourt={() => setIsSelectCourtModalOpen(true)} />}
                         {isSelectCourtModalOpen && <SelectCourtModal newCount={newSelection.size} delCount={deleteSelection.size} selectedCourt={selectedCourt} setSelectedCourt={setSelectedCourt} onBack={() => setIsSelectCourtModalOpen(false)} onSave={handleFinalSave} />}
