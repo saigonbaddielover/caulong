@@ -40,6 +40,13 @@ async function run() {
 
     snapshot.docs.forEach(docSnap => {
         const data = docSnap.data();
+
+        // Bỏ qua user đã bật lịch cố định
+        if (data.fixed === true) {
+            console.log(`Skipped (fixed): ${docSnap.id}`);
+            return;
+        }
+
         const slots = data.slots ?? [];
 
         // Chỉ lọc slots của đúng ngày hôm nay
