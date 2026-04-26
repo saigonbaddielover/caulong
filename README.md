@@ -43,8 +43,9 @@ schedules/{uid}
 Collection `court` — lịch đặt sân chung (shared, ai cũng đọc/ghi được):
 ```
 court/global
-  ├── bookedSlots: string[]  # ["T2-08:00", ...]
-  └── updatedAt: number
+  └── slots: map              # object, key = slot key
+        ├── "T2-08:00": { court: "EZB Đằng Hải", user: "Mạnh Nguyễn" }
+        └── "T4-14:30": { court: "Phú Cường", user: "An Tran" }
 ```
 
 Slot key format: `{thứ}-{giờ}` — không lưu ngày cụ thể, dùng lại mỗi tuần.

@@ -58,16 +58,21 @@ async function run() {
         }
     });
 
-    // Reset lịch đặt sân thực tế (metadata/booking)
-    const bookingRef = db.collection('metadata').doc('booking');
+    // Reset lịch đặt sân thực tế (court/global)
+    const bookingRef = db.collection('court').doc('global');
     const bookingDoc = await bookingRef.get();
     if (bookingDoc.exists) {
         const bData = bookingDoc.data();
-        const bSlots = bData.slots ?? [];
-        const bFiltered = bSlots.filter(slot => !slot.startsWith(`${todayKey}-`));
-        if (bFiltered.length !== bSlots.length) {
+        const bSlots = bData.slots ?? {};
+        const bFiltered = {};
+        let removed = 0;
+        for (const [key, val] of Object.entries(bSlots)) {
+            if (key.startsWith(`${todayKey}-`)) { removed++; }
+            else { bFiltered[key] = val; }
+        }
+        if (removed > 0) {
             batch.update(bookingRef, { slots: bFiltered });
-            console.log(`Cleared booking slots for ${todayKey}`);
+            console.log(`Cleared ${removed} booking slots for ${todayKey}`);
         }
     }
 
