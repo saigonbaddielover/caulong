@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Rảnh</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDflvBvXYn0z1F5vuD5osLlpBFuIR_ngoE",
+            authDomain: "caulong-2974b.firebaseapp.com",
+            projectId: "caulong-2974b",
+            storageBucket: "caulong-2974b.firebasestorage.app",
+            messagingSenderId: "450431128394",
+            appId: "1:450431128394:web:7c7b40628f90453a1327b3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        window.FB = {
+            auth, db, googleProvider,
+            doc, setDoc, onSnapshot, collection, query,
+            signInWithPopup, signOut, onAuthStateChanged
+        };
+    </script>
+
+    <style>
+        * {
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        body {
+            background: #f0f2f5;
+            color: #1a1a2e;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            border: 1px solid #e8eaed;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.25s ease forwards;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        const TIMES = [];
+        for (let h = 7; h <= 22; h++) {
+            for (const m of ['00', '30']) {
+                const val = h * 100 + parseInt(m);
+                if (val >= 1130 && val < 1330) continue;
+                if (val > 2200) continue;
+                TIMES.push(`${String(h).padStart(2, '0')}:${m}`);
+            }
+        }
+
+        const GoogleIcon = () => (
+            <svg width="18" height="18" viewBox="0 0 18 18">
+                <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z" />
+                <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.77-2.7.77-2.08 0-3.84-1.4-4.47-3.29H1.84v2.07A8 8 0 008.98 17z" />
+                <path fill="#FBBC05" d="M4.51 10.53A4.8 4.8 0 014.26 9c0-.53.09-1.04.25-1.53V5.4H1.84A8 8 0 001 9c0 1.29.31 2.5.84 3.6l2.67-2.07z" />
+                <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.84 5.4L4.5 7.47c.63-1.89 2.4-3.29 4.48-3.29z" />
+            </svg>
+        );
+
+        const SyncIcon = ({ spin }) => (
+            <svg className={`w-3 h-3 ${spin ? 'spin' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+            </svg>
+        );
+
+        function heatColor(count, max) {
+            if (!count) return { bg: '#f8f9fa', text: '#d1d5db', border: '#f0f0f0' };
+            const ratio = Math.min(count / Math.max(max, 1), 1);
+            if (ratio < 0.25) return { bg: '#e8f5e9', text: '#2e7d32', border: '#c8e6c9' };
+            if (ratio < 0.5) return { bg: '#fff3e0', text: '#e65100', border: '#ffe0b2' };
+            if (ratio < 0.75) return { bg: '#fff8e1', text: '#f57f17', border: '#ffecb3' };
+            return { bg: '#fce4ec', text: '#c62828', border: '#f8bbd0' };
+        }
+
+        // ── LOGIN SCREEN ─────────────────────────────────────────
+        function LoginScreen({ onLogin, loading }) {
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #f0f2f5 0%, #e8edf5 100%)' }}>
+                    <div className="card p-10 max-w-sm w-full text-center shadow-lg">
+                        <div className="w-14 h-14 rounded-2xl mx-auto mb-6 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>
+                            <span className="text-2xl">📅</span>
+                        </div>
+                        <h1 className="text-2xl font-bold mb-1 tracking-tight">Lịch Rảnh</h1>
+                        <p className="text-sm text-gray-400 mb-8">Đăng nhập để tick lịch rảnh với nhóm</p>
+                        <button
+                            onClick={onLogin}
+                            disabled={loading}
+                            className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? <span className="w-4 h-4 border-2 border-gray-300 border-t-indigo-500 rounded-full spin" /> : <GoogleIcon />}
+                            {loading ? 'Đang đăng nhập...' : 'Đăng nhập bằng Google'}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // ── MAIN APP ──────────────────────────────────────────────
+        function App() {
+            const [user, setUser] = useState(undefined); // undefined = loading
+            const [loginLoading, setLoginLoading] = useState(false);
+            const [allSchedules, setAllSchedules] = useState([]);
+            const [mySlots, setMySlots] = useState(new Set());
+            const [activeSlot, setActiveSlot] = useState(null);
+            const [syncing, setSyncing] = useState(false);
+
+            // Auth listener
+            useEffect(() => {
+                const { auth, onAuthStateChanged } = window.FB;
+                return onAuthStateChanged(auth, u => setUser(u ?? null));
+            }, []);
+
+            // Realtime Firestore
+            useEffect(() => {
+                if (!user) return;
+                const { db, collection, onSnapshot, query } = window.FB;
+                const q = query(collection(db, 'schedules'));
+                const unsub = onSnapshot(q, snap => {
+                    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAllSchedules(docs);
+                    const mine = docs.find(d => d.id === user.uid);
+                    if (mine?.slots) setMySlots(new Set(mine.slots));
+                });
+                return unsub;
+            }, [user]);
+
+            const login = async () => {
+                setLoginLoading(true);
+                try {
+                    const { auth, googleProvider, signInWithPopup } = window.FB;
+                    await signInWithPopup(auth, googleProvider);
+                } catch (e) {
+                    console.error(e);
+                }
+                setLoginLoading(false);
+            };
+
+            const logout = async () => {
+                const { auth, signOut } = window.FB;
+                await signOut(auth);
+                setUser(null);
+                setMySlots(new Set());
+                setAllSchedules([]);
+            };
+
+            const toggleSlot = async (day, time) => {
+                if (!user) return;
+                const key = `${day}-${time}`;
+                const next = new Set(mySlots);
+                next.has(key) ? next.delete(key) : next.add(key);
+                setMySlots(next);
+                setSyncing(true);
+                const { db, doc, setDoc } = window.FB;
+                try {
+                    await setDoc(doc(db, 'schedules', user.uid), {
+                        slots: [...next],
+                        name: user.displayName,
+                        photo: user.photoURL,
+                        updatedAt: Date.now()
+                    });
+                } catch (e) { console.error(e); }
+                setSyncing(false);
+            };
+
+            // Heatmap: tính tổng tất cả user kể cả mình
+            const heatmap = useMemo(() => {
+                const map = {};
+                allSchedules.forEach(entry => {
+                    entry.slots?.forEach(slot => {
+                        map[slot] = (map[slot] || 0) + 1;
+                    });
+                });
+                return map;
+            }, [allSchedules]);
+
+            const maxCount = useMemo(() => Math.max(0, ...Object.values(heatmap)), [heatmap]);
+
+            // Danh sách tên trong 1 slot
+            const slotUsers = useMemo(() => {
+                const map = {};
+                allSchedules.forEach(entry => {
+                    entry.slots?.forEach(slot => {
+                        if (!map[slot]) map[slot] = [];
+                        map[slot].push({ name: entry.name || entry.id.slice(-5), photo: entry.photo });
+                    });
+                });
+                return map;
+            }, [allSchedules]);
+
+            // ── LOADING ──
+            if (user === undefined) return (
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                    <div className="w-7 h-7 border-2 border-gray-200 border-t-indigo-500 rounded-full spin" />
+                </div>
+            );
+
+            // ── NOT LOGGED IN ──
+            if (!user) return <LoginScreen onLogin={login} loading={loginLoading} />;
+
+            // ── MAIN UI ──
+            return (
+                <div className="min-h-screen p-4 md:p-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-5 max-w-[1400px] mx-auto">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>📅</div>
+                            <span className="font-bold text-base tracking-tight">Lịch Rảnh</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className={`flex items-center gap-1.5 text-[10px] font-semibold tracking-wider uppercase ${syncing ? 'text-indigo-400' : 'text-gray-300'}`}>
+                                <SyncIcon spin={syncing} />
+                                {syncing ? 'Saving' : 'Saved'}
+                            </div>
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-gray-100">
+                                {user.photoURL && <img src={user.photoURL} className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />}
+                                <span className="text-xs font-medium text-gray-600 max-w-[120px] truncate">{user.displayName}</span>
+                                <button onClick={logout} className="text-[10px] text-gray-300 hover:text-red-400 transition-colors ml-1 font-medium">Đăng xuất</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1400px] mx-auto">
+
+                        {/* CÁ NHÂN */}
+                        <section className="lg:col-span-5 card p-5 flex flex-col">
+                            <div className="flex items-center justify-between mb-5">
+                                <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-indigo-500 flex items-center gap-1.5">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                                    1. Lịch của tôi
+                                </h2>
+                                <span className="text-[10px] text-gray-300 font-medium">{mySlots.size} slot đã chọn</span>
+                            </div>
+                            <TimeGrid days={DAYS} times={TIMES} renderCell={(day, time) => {
+                                const key = `${day}-${time}`;
+                                const sel = mySlots.has(key);
+                                return (
+                                    <button key={key} onClick={() => toggleSlot(day, time)}
+                                        className={`rounded-xl border h-9 flex items-center justify-center transition-all duration-150
+                      ${sel
+                                                ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm scale-[0.97]'
+                                                : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-indigo-200 hover:shadow-sm'}`}>
+                                        {sel && <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>}
+                                    </button>
+                                );
+                            }} />
+                        </section>
+
+                        {/* TỔNG HỢP */}
+                        <section className="lg:col-span-5 card p-5 flex flex-col">
+                            <div className="flex items-center justify-between mb-5">
+                                <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-rose-400 flex items-center gap-1.5">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
+                                    2. Tổng hợp
+                                </h2>
+                                <span className="text-[10px] text-gray-300 font-medium">{allSchedules.length} thành viên</span>
+                            </div>
+                            <TimeGrid days={DAYS} times={TIMES} renderCell={(day, time) => {
+                                const key = `${day}-${time}`;
+                                const count = heatmap[key] || 0;
+                                const c = heatColor(count, maxCount);
+                                const isActive = activeSlot === key;
+                                return (
+                                    <button key={key}
+                                        onClick={() => setActiveSlot(isActive ? null : key)}
+                                        style={{ background: c.bg, color: c.text, borderColor: isActive ? '#6366f1' : c.border, outline: isActive ? '2px solid #c7d2fe' : 'none', outlineOffset: '1px' }}
+                                        className="rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 hover:brightness-95">
+                                        {count > 0 ? count : ''}
+                                    </button>
+                                );
+                            }} />
+                        </section>
+
+                        {/* SIDEBAR */}
+                        <aside className="lg:col-span-2">
+                            <div className="card p-5 sticky top-4">
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 mb-4 pb-3 border-b border-gray-50">
+                                    Thành viên rảnh
+                                </h2>
+                                {!activeSlot ? (
+                                    <div className="flex flex-col items-center justify-center py-14 text-gray-200 text-center">
+                                        <svg className="w-6 h-6 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
+                                        <p className="text-[9px] font-semibold uppercase tracking-widest">Chọn ô tổng hợp</p>
+                                    </div>
+                                ) : (
+                                    <div className="fade-in space-y-3">
+                                        <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
+                                            <p className="text-[10px] font-bold text-gray-500 tracking-tight">
+                                                {activeSlot.replace('-', ' • ')}
+                                            </p>
+                                        </div>
+                                        <div className="space-y-1.5 max-h-[60vh] overflow-y-auto">
+                                            {(slotUsers[activeSlot] || []).length === 0 ? (
+                                                <p className="text-[10px] text-center py-8 text-gray-300 italic">Trống</p>
+                                            ) : (slotUsers[activeSlot] || []).map((u, i) => (
+                                                <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-indigo-100 transition-all">
+                                                    {u.photo
+                                                        ? <img src={u.photo} className="w-7 h-7 rounded-lg object-cover" referrerPolicy="no-referrer" />
+                                                        : <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center text-[10px] font-bold">{u.name.charAt(0).toUpperCase()}</div>
+                                                    }
+                                                    <p className="text-[11px] font-semibold text-gray-500 truncate">{u.name}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+            );
+        }
+
+        // ── REUSABLE TIME GRID ────────────────────────────────────
+        function TimeGrid({ days, times, renderCell }) {
+            return (
+                <div className="overflow-x-auto flex-1">
+                    <div style={{ minWidth: '440px' }}>
+                        <div className="grid gap-1.5 mb-3 pb-2 border-b border-gray-50"
+                            style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                            <div />
+                            {days.map(d => (
+                                <div key={d} className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-tight">{d}</div>
+                            ))}
+                        </div>
+                        <div className="max-h-[72vh] overflow-y-auto pr-1 space-y-1">
+                            {times.map(time => {
+                                const isHour = time.endsWith(':00');
+                                return (
+                                    <div key={time} className="grid gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                                        <div className={`flex items-center justify-end pr-2 text-right select-none
+                      ${isHour ? 'text-[10px] font-bold text-gray-500' : 'text-[9px] font-medium text-gray-300'}`}>
+                                            {isHour ? time : time.split(':')[1]}
+                                        </div>
+                                        {days.map(day => renderCell(day, time))}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+
+</html>
