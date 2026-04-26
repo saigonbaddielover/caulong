@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lịch Rảnh</title>
+    <title>Lịch Rảnh 🏸</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏸</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -365,7 +366,7 @@
 
         const SidebarTop = ({ syncing, user, onOpenManage, setIsCourtModalOpen, logout }) => (
             <div className="card p-4 shrink-0 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-y-2">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs shadow-sm" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>📅</div>
@@ -488,7 +489,9 @@
             }, [user]);
 
             useEffect(() => {
-                const { auth, onAuthStateChanged } = window.FB;
+                const { auth, onAuthStateChanged, getRedirectResult } = window.FB;
+                // Handle redirect result for mobile
+                getRedirectResult(auth).catch(e => console.error("Redirect error:", e));
                 return onAuthStateChanged(auth, u => setUser(u ?? null));
             }, []);
 
