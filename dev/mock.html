@@ -96,11 +96,6 @@
             photoURL: null,
         };
 
-        // Tạo mock schedules để cover đủ các case heatmap 1-8+
-        // Mỗi entry = 1 user với danh sách slots họ đã tick
-        // Mỗi slot T{n}-08:00 có đúng n người → cover case 1..11
-        // T2=1, T3=2, T4=3, T5=4, T6=5, T7=6, CN=7
-        // T2-09:00=8, T2-09:30=9, T2-10:00=10, T2-10:30=11
         const MOCK_SCHEDULES = [
             {
                 id: 'user-me', name: 'Manh Nguyen', photo: null,
@@ -147,40 +142,26 @@
                 slots: ['T2-10:30']
             },
         ];
-        // Kết quả:
-        // T2-08:00 = 1 người  → mức 1
-        // T3-08:00 = 2 người  → mức 2
-        // T4-08:00 = 3 người  → mức 3
-        // T5-08:00 = 4 người  → mức 4
-        // T6-08:00 = 5 người  → mức 5
-        // T7-08:00 = 6 người  → mức 6
-        // CN-08:00 = 7 người  → mức 7
-        // T2-09:00 = 8 người  → mức 8 (cap)
-        // T2-09:30 = 9 người  → mức 8 (cap)
-        // T2-10:00 = 10 người → mức 8 (cap)
-        // T2-10:30 = 11 người → mức 8 (cap)
-        // ─────────────────────────────────────────────────────────
 
         const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
         const TIMES = [];
-        for (let h = 7; h <= 22; h++) {
+        for (let h = 8; h <= 21; h++) {
             for (const m of ['00', '30']) {
                 const val = h * 100 + parseInt(m);
-                if (val >= 1130 && val < 1330) continue;
-                if (val > 2200) continue;
+                if (val >= 1200 && val <= 1330) continue;
                 TIMES.push(`${String(h).padStart(2, '0')}:${m}`);
             }
         }
 
         const HEAT_STEPS = [
-            { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' }, // 1 — xanh mint nhạt
-            { bg: '#dcfce7', text: '#15803d', border: '#86efac' }, // 2 — xanh lá nhạt
-            { bg: '#ecfccb', text: '#3f6212', border: '#bef264' }, // 3 — lime
-            { bg: '#fefce8', text: '#854d0e', border: '#fde047' }, // 4 — vàng nhạt
-            { bg: '#fef08a', text: '#92400e', border: '#facc15' }, // 5 — vàng
-            { bg: '#ffedd5', text: '#9a3412', border: '#fdba74' }, // 6 — cam nhạt
-            { bg: '#fb923c', text: '#fff', border: '#ea580c' }, // 7 — cam
-            { bg: '#ea580c', text: '#fff', border: '#c2410c' }, // 8 — cam đậm
+            { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
+            { bg: '#dcfce7', text: '#15803d', border: '#86efac' },
+            { bg: '#ecfccb', text: '#3f6212', border: '#bef264' },
+            { bg: '#fefce8', text: '#854d0e', border: '#fde047' },
+            { bg: '#fef08a', text: '#92400e', border: '#facc15' },
+            { bg: '#ffedd5', text: '#9a3412', border: '#fdba74' },
+            { bg: '#fb923c', text: '#fff', border: '#ea580c' },
+            { bg: '#ea580c', text: '#fff', border: '#c2410c' },
         ];
 
         function heatColor(count) {
@@ -197,7 +178,8 @@
         function App() {
             const [mySlots, setMySlots] = useState(new Set(MOCK_SCHEDULES[0].slots));
             const [fixed, setFixed] = useState(false);
-            const [activeSlot, setActiveSlot] = useState('T2-10:30'); // 11 người
+            const [activeSlot, setActiveSlot] = useState('T2-10:30');
+            const [modalConfig, setModalConfig] = useState(null);
 
             const toggleSlot = (day, time) => {
                 const key = `${day}-${time}`;
@@ -210,7 +192,36 @@
 
             const toggleFixed = () => setFixed(!fixed);
 
-            // Mock schedules but with mySlots updated
+            const handleSelectAll = () => {
+                const all = new Set();
+                DAYS.forEach(day => {
+                    TIMES.forEach(time => {
+                        all.add(`${day}-${time}`);
+                    });
+                });
+                setMySlots(all);
+                setModalConfig(null);
+            };
+
+            const handleClearAll = () => {
+                setMySlots(new Set());
+                setModalConfig(null);
+            };
+
+            const confirmAction = (type) => {
+                if (type === 'ALL') {
+                    setModalConfig({
+                        message: 'Mày chắc chưa? Sẽ chọn tất cả các ca trong tuần đó!',
+                        onConfirm: handleSelectAll
+                    });
+                } else if (type === 'CLEAR') {
+                    setModalConfig({
+                        message: 'Mày chắc chưa? Sẽ xoá toàn bộ lịch đã chọn đó!',
+                        onConfirm: handleClearAll
+                    });
+                }
+            };
+
             const allSchedules = useMemo(() => [
                 { ...MOCK_SCHEDULES[0], slots: Array.from(mySlots) },
                 ...MOCK_SCHEDULES.slice(1)
@@ -236,52 +247,38 @@
             }, [allSchedules]);
 
             return (
-                <div className="min-h-screen p-4 md:p-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-5 max-w-[1400px] mx-auto">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base"
-                                style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>📅</div>
-                            <span className="font-bold text-base tracking-tight">Lịch Rảnh</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider uppercase text-gray-300">
-                                <SyncIcon spin={false} />
-                                MOCK MODE
-                            </div>
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-gray-100">
-                                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[10px] font-bold">M</div>
-                                <span className="text-xs font-medium text-gray-600">{MOCK_ME.displayName}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1400px] mx-auto">
+                <div className="min-h-screen p-4 md:p-6 relative">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1400px] mx-auto items-start">
 
                         {/* CÁ NHÂN */}
-                        <section className="lg:col-span-5 card p-5 flex flex-col">
-                            <div className="flex items-center justify-between mb-5">
-                                <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-indigo-500 flex items-center gap-1.5">
+                        <section className="lg:col-span-5 card p-5 flex flex-col h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 shrink-0">
+                                <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#04BADE] flex items-center gap-1.5 whitespace-nowrap">
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                                     1. Lịch của tôi
                                 </h2>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                     <div className="relative group">
                                         <button onClick={toggleFixed}
-                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold transition-all duration-200
+                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold transition-all duration-200 text-[#04BADE]
                       ${fixed
-                                                    ? 'bg-violet-50 border-violet-200 text-violet-600'
-                                                    : 'bg-gray-50 border-gray-100 text-gray-300 hover:border-gray-200'}`}>
-                                            <span className={`w-6 h-3 rounded-full relative transition-colors duration-200 ${fixed ? 'bg-violet-400' : 'bg-gray-200'}`}>
+                                                    ? 'bg-[#04BADE]/10 border-[#04BADE]/30'
+                                                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
+                                            Cố định
+                                            <span className={`w-6 h-3 rounded-full relative transition-colors duration-200 ${fixed ? 'bg-[#04BADE]' : 'bg-gray-300'}`}>
                                                 <span className={`absolute top-0.5 w-2 h-2 rounded-full bg-white shadow transition-all duration-200 ${fixed ? 'left-3.5' : 'left-0.5'}`} />
                                             </span>
-                                            Cố định
                                         </button>
                                         <div className="absolute right-0 top-full mt-1.5 w-56 bg-gray-900 text-white text-[10px] leading-relaxed rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
                                             Khi bật, lịch của bạn sẽ cố định hàng tuần và không bị tự động xoá sau mỗi ngày.
                                         </div>
                                     </div>
-                                    <span className="text-[10px] text-gray-300 font-medium">{mySlots.size} slot đã chọn</span>
+                                    <button onClick={() => confirmAction('ALL')} className="px-2.5 py-1 rounded-lg border border-[#04BADE]/30 bg-[#04BADE]/10 text-[#04BADE] text-[10px] font-semibold hover:bg-[#04BADE]/20 transition-all whitespace-nowrap">
+                                        Chọn tất cả
+                                    </button>
+                                    <button onClick={() => confirmAction('CLEAR')} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all whitespace-nowrap">
+                                        Bỏ chọn tất cả
+                                    </button>
                                 </div>
                             </div>
                             <TimeGrid days={DAYS} times={TIMES} renderCell={(day, time) => {
@@ -289,10 +286,10 @@
                                 const sel = mySlots.has(key);
                                 return (
                                     <button key={key} onClick={() => toggleSlot(day, time)}
-                                        className={`rounded-xl border h-9 flex items-center justify-center transition-all duration-150
+                                        className={`w-full rounded-xl border h-9 flex items-center justify-center transition-all duration-150
                       ${sel
-                                                ? 'bg-indigo-500 border-indigo-600 text-white shadow-sm scale-[0.97]'
-                                                : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-indigo-200 hover:shadow-sm'}`}>
+                                                ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]'
+                                                : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40 hover:shadow-sm'}`}>
                                         {sel && <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>}
                                     </button>
                                 );
@@ -300,13 +297,12 @@
                         </section>
 
                         {/* TỔNG HỢP */}
-                        <section className="lg:col-span-5 card p-5 flex flex-col">
-                            <div className="flex items-center justify-between mb-5">
+                        <section className="lg:col-span-5 card p-5 flex flex-col h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
+                            <div className="flex items-center justify-between mb-5 shrink-0">
                                 <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-rose-400 flex items-center gap-1.5">
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
                                     2. Tổng hợp
                                 </h2>
-                                <span className="text-[10px] text-gray-300 font-medium">{MOCK_SCHEDULES.length} thành viên</span>
                             </div>
                             <TimeGrid days={DAYS} times={TIMES} renderCell={(day, time) => {
                                 const key = `${day}-${time}`;
@@ -316,8 +312,14 @@
                                 return (
                                     <button key={key}
                                         onClick={() => setActiveSlot(isActive ? null : key)}
-                                        style={{ background: c.bg, color: c.text, borderColor: isActive ? '#6366f1' : c.border, outline: isActive ? '2px solid #c7d2fe' : 'none', outlineOffset: '1px' }}
-                                        className="rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 hover:brightness-95">
+                                        style={{
+                                            background: c.bg,
+                                            color: c.text,
+                                            borderColor: isActive ? '#6366f1' : c.border,
+                                            outline: isActive ? '2px solid #c7d2fe' : 'none',
+                                            outlineOffset: '1px'
+                                        }}
+                                        className="w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all duration-150 hover:brightness-95">
                                         {count > 0 ? count : ''}
                                     </button>
                                 );
@@ -326,68 +328,192 @@
 
                         {/* SIDEBAR */}
                         <aside className="lg:col-span-2">
-                            <div className="card p-5 sticky top-4">
-                                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 mb-4 pb-3 border-b border-gray-50">
-                                    Thành viên rảnh
-                                </h2>
-                                {!activeSlot ? (
-                                    <div className="flex flex-col items-center justify-center py-14 text-gray-200 text-center">
-                                        <svg className="w-6 h-6 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
-                                        <p className="text-[9px] font-semibold uppercase tracking-widest">Chọn ô tổng hợp</p>
-                                    </div>
-                                ) : (
-                                    <div className="fade-in space-y-3">
-                                        <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
-                                            <p className="text-[10px] font-bold text-gray-500 tracking-tight">
-                                                {activeSlot.replace('-', ' • ')}
-                                            </p>
+                            <div className="flex flex-col gap-4 sticky top-4 h-[calc(100vh-32px)] md:h-[calc(100vh-48px)]">
+                                <div className="card p-4 shrink-0">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
+                                                style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>📅</div>
+                                            <span className="font-bold text-sm tracking-tight">Lịch Rảnh</span>
                                         </div>
-                                        <div className="space-y-1.5 max-h-[60vh] overflow-y-auto">
-                                            {(slotUsers[activeSlot] || []).length === 0 ? (
-                                                <p className="text-[10px] text-center py-8 text-gray-300 italic">Trống</p>
-                                            ) : (slotUsers[activeSlot] || []).map((u, i) => (
-                                                <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-indigo-100 transition-all">
-                                                    {u.photo
-                                                        ? <img src={u.photo} className="w-7 h-7 rounded-lg object-cover" referrerPolicy="no-referrer" />
-                                                        : <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center text-[10px] font-bold">{u.name.charAt(0).toUpperCase()}</div>
-                                                    }
-                                                    <p className="text-[11px] font-semibold text-gray-500 truncate">{u.name}</p>
-                                                </div>
-                                            ))}
+                                        <div className="flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase text-gray-400">
+                                            <SyncIcon spin={false} /> MOCK
                                         </div>
                                     </div>
-                                )}
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
+                                        <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[11px] font-bold">M</div>
+                                        <span className="text-xs font-medium text-gray-700">{MOCK_ME.displayName}</span>
+                                    </div>
+                                </div>
+                                <div className="card p-5 flex flex-col flex-1 min-h-0">
+                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 mb-4 pb-3 border-b border-gray-50 shrink-0">
+                                        Thành viên rảnh
+                                    </h2>
+                                    {!activeSlot ? (
+                                        <div className="flex flex-col items-center justify-center py-14 text-gray-200 text-center flex-1">
+                                            <svg className="w-6 h-6 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
+                                            <p className="text-[9px] font-semibold uppercase tracking-widest">Chọn ô tổng hợp</p>
+                                        </div>
+                                    ) : (
+                                        <div className="fade-in space-y-3 flex flex-col flex-1 min-h-0">
+                                            <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100 shrink-0">
+                                                <p className="text-[10px] font-bold text-gray-500 tracking-tight">
+                                                    {activeSlot.replace('-', ' • ')}
+                                                </p>
+                                            </div>
+                                            <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1 pb-1">
+                                                {(slotUsers[activeSlot] || []).length === 0 ? (
+                                                    <p className="text-[10px] text-center py-8 text-gray-300 italic">Trống</p>
+                                                ) : (slotUsers[activeSlot] || []).map((u, i) => (
+                                                    <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-indigo-100 transition-all">
+                                                        {u.photo
+                                                            ? <img src={u.photo} className="w-7 h-7 rounded-lg object-cover" referrerPolicy="no-referrer" />
+                                                            : <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center text-[10px] font-bold">{u.name.charAt(0).toUpperCase()}</div>
+                                                        }
+                                                        <p className="text-[11px] font-semibold text-gray-500 truncate">{u.name}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </aside>
+
+                        {/* MODAL */}
+                        {modalConfig && (
+                            <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                                <div className="bg-white p-6 rounded-2xl max-w-xs w-full shadow-2xl text-center">
+                                    <div className="w-12 h-12 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    </div>
+                                    <h3 className="text-lg font-bold mb-2 text-gray-800">Xác nhận</h3>
+                                    <p className="text-sm text-gray-500 mb-6">{modalConfig.message}</p>
+                                    <div className="flex gap-3 justify-center">
+                                        <button onClick={() => setModalConfig(null)} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">
+                                            Tao chưa
+                                        </button>
+                                        <button onClick={modalConfig.onConfirm} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition">
+                                            Tao chắc
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
                 </div>
             );
         }
 
+        // Reusable TimeGrid Component
         function TimeGrid({ days, times, renderCell }) {
+            // Lấy thứ hiện tại theo múi giờ GMT+7
+            const todayStr = useMemo(() => {
+                const d = new Date();
+                const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+                const gmt7 = new Date(utc + (3600000 * 7));
+                const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+                return dayMap[gmt7.getDay()];
+            }, []);
+
+            const todayIndex = days.indexOf(todayStr);
+
             return (
-                <div className="overflow-x-auto flex-1">
-                    <div style={{ minWidth: '440px' }}>
-                        <div className="grid gap-1.5 mb-3 pb-2 border-b border-gray-50"
-                            style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
-                            <div />
-                            {days.map(d => (
-                                <div key={d} className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-tight">{d}</div>
-                            ))}
-                        </div>
-                        <div className="max-h-[72vh] overflow-y-auto pr-1 space-y-1">
-                            {times.map(time => {
-                                const isHour = time.endsWith(':00');
-                                return (
-                                    <div key={time} className="grid gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
-                                        <div className={`flex items-center justify-end pr-2 text-right select-none
-                      ${isHour ? 'text-[10px] font-bold text-gray-500' : 'text-[9px] font-medium text-gray-300'}`}>
-                                            {isHour ? time : time.split(':')[1]}
-                                        </div>
-                                        {days.map(day => renderCell(day, time))}
+                <div className="overflow-x-auto flex-1 flex flex-col min-h-0">
+                    <div style={{ minWidth: '460px' }} className="flex-1 overflow-y-auto relative custom-scrollbar">
+
+                        {/* --- 1. STICKY HEADER --- */}
+                        <div className="sticky top-0 z-40 bg-white pt-3 pb-2 px-2 border-b border-gray-100">
+                            {/* Khung chiếu Header (Cố định cùng Header) */}
+                            {todayIndex !== -1 && (
+                                <div className="absolute inset-0 pointer-events-none z-10 px-2" style={{ top: '1px', bottom: '-1px' }}>
+                                    <div className="grid h-full gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                                        <div />
+                                        {days.map((d, i) => (
+                                            <div key={d} className="relative h-full">
+                                                {i === todayIndex && (
+                                                    <div className="absolute top-0 bottom-0 border-[#04BADE] rounded-t-[10px]"
+                                                        style={{
+                                                            left: '-3.75px', right: '-3.75px',
+                                                            borderTopWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px', borderBottomWidth: '0'
+                                                        }}></div>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
-                                );
-                            })}
+                                </div>
+                            )}
+
+                            {/* Tiêu đề Ngày */}
+                            <div className="grid gap-1.5 relative z-20" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                                <div />
+                                {days.map((d, i) => (
+                                    <div key={d} className={`text-center text-[10px] font-bold uppercase tracking-tight py-1 ${i === todayIndex ? 'text-[#04BADE]' : 'text-gray-400'}`}>
+                                        {d}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* --- 2. SCROLLABLE BODY --- */}
+                        <div className="relative pt-2 pb-4 px-2">
+                            <div className="relative">
+                                {/* Khung chiếu Body (Trượt theo cuộn chuột) */}
+                                {todayIndex !== -1 && (
+                                    <div className="absolute inset-0 pointer-events-none z-20" style={{ top: '-16px', bottom: '-4px' }}>
+                                        <div className="grid h-full gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                                            <div />
+                                            {days.map((d, i) => (
+                                                <div key={d} className="relative h-full">
+                                                    {i === todayIndex && (
+                                                        <div className="absolute top-0 bottom-0 border-[#04BADE] rounded-b-[10px]"
+                                                            style={{
+                                                                left: '-3.75px', right: '-3.75px',
+                                                                borderTopWidth: '0', borderLeftWidth: '1.5px', borderRightWidth: '1.5px', borderBottomWidth: '1.5px'
+                                                            }}></div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Các ô Thời gian & Ca rảnh */}
+                                <div className="space-y-1.5 relative z-10">
+                                    {times.map((time, timeIndex) => {
+                                        const isHour = time.endsWith(':00');
+                                        const isAfternoonStart = time === '14:00';
+
+                                        return (
+                                            <React.Fragment key={time}>
+                                                {/* Dải phân cách buổi chiều */}
+                                                {isAfternoonStart && (
+                                                    <div className="flex items-center py-2 my-1 relative">
+                                                        <div className="w-[40px]"></div>
+                                                        <div className="flex-1 border-t border-dashed border-indigo-200"></div>
+                                                    </div>
+                                                )}
+
+                                                {/* Từng hàng giờ */}
+                                                <div className="grid gap-1.5 relative" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                                                    <div className={`flex items-center justify-end pr-2 text-right select-none
+                                                        ${isHour ? 'text-[10px] font-bold text-gray-500' : 'text-[9px] font-medium text-gray-400'}`}>
+                                                        {time}
+                                                    </div>
+
+                                                    {/* Render các ô cho mỗi ngày trong hàng */}
+                                                    {days.map(day => (
+                                                        <div key={day} className="relative">
+                                                            {renderCell(day, time)}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
