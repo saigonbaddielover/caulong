@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lịch Rảnh 🏸</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏸</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏸</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -42,16 +44,61 @@
     </script>
 
     <style>
-        * { font-family: 'DM Sans', sans-serif; }
-        body { background: #f0f2f5; color: #1a1a2e; }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-        .card { background: #fff; border-radius: 20px; border: 1px solid #e8eaed; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeIn 0.25s ease forwards; }
+        * {
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        body {
+            background: #f0f2f5;
+            color: #1a1a2e;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            border: 1px solid #e8eaed;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.25s ease forwards;
+        }
     </style>
 </head>
 
@@ -458,6 +505,7 @@
         // ── 5. MAIN APP ──────────────────────────────────────────
         function App() {
             const [user, setUser] = useState(undefined);
+            const [authInitializing, setAuthInitializing] = useState(true);
             const [loginLoading, setLoginLoading] = useState(false);
             const [allSchedules, setAllSchedules] = useState([]);
             const [mySlots, setMySlots] = useState(new Set());
@@ -487,25 +535,43 @@
                 el1.addEventListener('scroll', onScroll1, { passive: true });
                 el2.addEventListener('scroll', onScroll2, { passive: true });
                 return () => { el1.removeEventListener('scroll', onScroll1); el2.removeEventListener('scroll', onScroll2); };
-            }, [user]);
+            }, [user, authInitializing]);
 
             useEffect(() => {
                 const { auth, onAuthStateChanged, getRedirectResult, setPersistence, browserLocalPersistence } = window.FB;
-                
+
                 const initAuth = async () => {
                     try {
-                        // Force local persistence
                         await setPersistence(auth, browserLocalPersistence);
-                        // Handle redirect result for mobile
+                        // Important: wait for redirect result before anything else
                         await getRedirectResult(auth);
                     } catch (e) {
                         console.error("Auth Init Error:", e);
+                    } finally {
+                        setAuthInitializing(false);
                     }
                 };
 
                 initAuth();
-                return onAuthStateChanged(auth, u => setUser(u ?? null));
+                const unsub = onAuthStateChanged(auth, u => {
+                    setUser(u ?? null);
+                });
+                return unsub;
             }, []);
+
+            useEffect(() => {
+                const s1 = grid1Ref.current;
+                const s2 = grid2Ref.current;
+                if (!s1 || !s2) return;
+                const sync1 = () => { if (s2.scrollTop !== s1.scrollTop) s2.scrollTop = s1.scrollTop; };
+                const sync2 = () => { if (s1.scrollTop !== s2.scrollTop) s1.scrollTop = s2.scrollTop; };
+                s1.addEventListener('scroll', sync1);
+                s2.addEventListener('scroll', sync2);
+                return () => {
+                    s1.removeEventListener('scroll', sync1);
+                    s2.removeEventListener('scroll', sync2);
+                };
+            }, [grid1Ref, grid2Ref, user, authInitializing]);
 
             useEffect(() => {
                 if (!user) return;
@@ -531,8 +597,11 @@
                     const { auth, googleProvider, signInWithPopup, signInWithRedirect } = window.FB;
                     // Mobile browsers block popups, fall back to redirect
                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                    if (isMobile) { await signInWithRedirect(auth, googleProvider); }
-                    else { await signInWithPopup(auth, googleProvider); }
+                    if (isMobile) {
+                        await signInWithRedirect(auth, googleProvider);
+                    } else {
+                        await signInWithPopup(auth, googleProvider);
+                    }
                 } catch (e) {
                     console.error(e);
                     // If popup blocked, try redirect
@@ -619,9 +688,12 @@
                 return map;
             }, [allSchedules]);
 
-            if (user === undefined) return (
+            if (user === undefined || authInitializing) return (
                 <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                    <div className="w-7 h-7 border-2 border-gray-200 border-t-indigo-500 rounded-full spin" />
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="w-7 h-7 border-2 border-gray-200 border-t-[#04BADE] rounded-full spin" />
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Đang kiểm tra đăng nhập...</p>
+                    </div>
                 </div>
             );
 
