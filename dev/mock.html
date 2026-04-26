@@ -615,7 +615,7 @@
                                     <button key={key} onClick={() => setActiveSlot(isActive ? null : key)} style={{ background: c.bg, color: c.text, borderColor: isActive ? '#6366f1' : c.border, outline: isActive ? '2px solid #c7d2fe' : 'none', outlineOffset: '1px' }} className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all hover:brightness-95">
                                         {count > 0 ? count : ''}
                                         {info && <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm" title={`${info.court} - ${info.user}`}>🏸</span>}
-                                        {isSelected && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#04BADE] rounded-full shadow-sm" title="Ca bạn đã chọn"></div>}
+                                        {isSelected && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-white rounded-full shadow-sm" title="Ca bạn đã chọn"></div>}
                                     </button>
                                 );
                             }} />
