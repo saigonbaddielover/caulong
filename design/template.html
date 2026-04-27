@@ -95,6 +95,7 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
 
+        // SYNC-ZONE-START:SHARED_CONSTANTS
         // ── 1. CONSTANTS ──────────────────────────────────────────
         const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
         const HEAT_STEPS = [
@@ -133,6 +134,8 @@
             return t;
         })();
 
+        // SYNC-ZONE-END:SHARED_CONSTANTS
+
         const MOCK_ME = { uid: 'user-me', displayName: 'Mạnh Nguyễn', photoURL: null };
         const MOCK_SCHEDULES = [
             { id: 'user-me', name: 'Mạnh Nguyễn', photo: null, slots: ['T2-08:00', 'T3-08:00', 'T4-08:00', 'T5-08:00', 'T6-08:00', 'T7-08:00', 'CN-08:00'] },
@@ -148,6 +151,7 @@
             { id: 'u11', name: 'Kiên', photo: null, slots: ['T2-10:30'] },
         ];
 
+        // SYNC-ZONE-START:SHARED_UTILS
         // ── 2. UTILS ──────────────────────────────────────────────
         const heatColor = (count) => {
             if (!count) return { bg: '#f8f9fa', text: '#d1d5db', border: '#f0f0f0' };
@@ -161,7 +165,19 @@
             return ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][gmt7.getDay()];
         };
 
+        // SYNC-ZONE-END:SHARED_UTILS
+
+        // SYNC-ZONE-START:SHARED_COMPONENTS
         // ── 3. UI COMPONENTS (PRIMITIVES) ──────────────────────────
+        const GoogleIcon = () => (
+            <svg width="18" height="18" viewBox="0 0 18 18">
+                <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z" />
+                <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.77-2.7.77-2.08 0-3.84-1.4-4.47-3.29H1.84v2.07A8 8 0 008.98 17z" />
+                <path fill="#FBBC05" d="M4.51 10.53A4.8 4.8 0 014.26 9c0-.53.09-1.04.25-1.53V5.4H1.84A8 8 0 001 9c0 1.29.31 2.5.84 3.6l2.67-2.07z" />
+                <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.84 5.4L4.5 7.47c.63-1.89 2.4-3.29 4.48-3.29z" />
+            </svg>
+        );
+
         const SyncIcon = ({ spin }) => (
             <svg className={`w-3 h-3 ${spin ? 'spin' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
@@ -606,7 +622,25 @@
         );
 
         // ── 6. SIDEBAR COMPONENTS ────────────────────────────────
-        const SidebarTop = ({ syncing, onOpenManage, onOpenCourts, viewMode, setViewMode }) => (
+        function LoginScreen({ onLogin, loading }) {
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #f0f2f5 0%, #e8edf5 100%)' }}>
+                    <div className="card p-10 max-w-sm w-full text-center shadow-lg">
+                        <div className="w-14 h-14 rounded-2xl mx-auto mb-6 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>
+                            <span className="text-2xl">📅</span>
+                        </div>
+                        <h1 className="text-2xl font-bold mb-1 tracking-tight">Lịch Rảnh</h1>
+                        <p className="text-sm text-gray-400 mb-8">Đăng nhập để tick lịch rảnh với nhóm</p>
+                        <button onClick={onLogin} disabled={loading} className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            {loading ? <span className="w-4 h-4 border-2 border-gray-300 border-t-indigo-500 rounded-full spin" /> : <GoogleIcon />}
+                            {loading ? 'Đang đăng nhập...' : 'Đăng nhập bằng Google'}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        const SidebarTop = ({ syncing, idleSyncLabel, user, logout, onOpenManage, onOpenCourts, viewMode, setViewMode }) => (
             <div className="card p-4 shrink-0 flex flex-col gap-4">
                 <div className="flex items-center justify-between flex-wrap gap-y-2">
                     <div className="flex items-center gap-3">
@@ -615,15 +649,18 @@
                             <span className="font-bold text-sm tracking-tight">Lịch Rảnh</span>
                         </div>
                         <div className="flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase text-gray-300 pt-0.5">
-                            <SyncIcon spin={syncing} /> {syncing ? 'Saving' : 'MOCK'}
+                            <SyncIcon spin={syncing} /> {syncing ? 'Saving' : idleSyncLabel}
                         </div>
                     </div>
-                    <button onClick={() => alert('Logout mock')} className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase tracking-tighter transition-colors bg-gray-50 hover:bg-red-50 px-2 py-1 rounded-lg border border-gray-100 hover:border-red-100">Đăng xuất</button>
+                    <button onClick={logout} className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase tracking-tighter transition-colors bg-gray-50 hover:bg-red-50 px-2 py-1 rounded-lg border border-gray-100 hover:border-red-100">Đăng xuất</button>
                 </div>
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
-                        <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[11px] font-bold">M</div>
-                        <span className="text-xs font-bold text-gray-700 truncate">{MOCK_ME.displayName}</span>
+                        {user?.photoURL
+                            ? <img src={user.photoURL} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                            : <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[11px] font-bold">{user?.displayName?.charAt(0) || 'U'}</div>
+                        }
+                        <span className="text-xs font-bold text-gray-700 truncate">{user?.displayName || 'Unknown user'}</span>
                     </div>
                     <div className="flex bg-gray-100 p-1 rounded-xl w-full">
                         <button onClick={() => setViewMode('horizontal')} className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${viewMode === 'horizontal' ? 'bg-white text-[#04BADE] shadow-sm ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}>
@@ -703,31 +740,74 @@
                 </div>
             );
         };
+        // SYNC-ZONE-END:SHARED_COMPONENTS
 
         // ── 7. MAIN APP ──────────────────────────────────────────
         function App() {
-            const [viewMode, setViewMode] = useState('horizontal');
+            const user = MOCK_ME;
             const [mySlots, setMySlots] = useState(new Set(MOCK_SCHEDULES[0].slots));
             const [fixed, setFixed] = useState(false);
-            const [activeSlot, setActiveSlot] = useState('T2-08:00');
-            const [modalConfig, setModalConfig] = useState(null);
             const [syncing, setSyncing] = useState(false);
             const [bookedSlots, setBookedSlots] = useState({
                 'T2-08:00': { court: 'EZB Đằng Hải', user: 'Mạnh Nguyễn' },
                 'T2-09:00': { court: 'EZB Đằng Hải', user: 'Mạnh Nguyễn' }
             });
 
+            const allSchedules = useMemo(() => [
+                { ...MOCK_SCHEDULES[0], slots: Array.from(mySlots) },
+                ...MOCK_SCHEDULES.slice(1)
+            ], [mySlots]);
+
+            const idleSyncLabel = 'MOCK';
+
+            const logout = () => alert('Logout mock');
+
+            const toggleFixed = () => {
+                setFixed(prev => !prev);
+                setSyncing(true);
+                setTimeout(() => setSyncing(false), 500);
+            };
+
+            const handleSelectAll = () => {
+                const all = new Set();
+                DAYS.forEach(day => TIMES.forEach(time => all.add(`${day}-${time}`)));
+                setMySlots(all);
+                setModalConfig(null);
+            };
+
+            const handleClearAll = () => {
+                setMySlots(new Set());
+                setModalConfig(null);
+            };
+
+            const applySlotSelectionRange = (action, range) => {
+                setMySlots(old => {
+                    const next = new Set(old);
+                    range.forEach(key => {
+                        if (action === 'select') next.add(key);
+                        else next.delete(key);
+                    });
+                    return next;
+                });
+                setSyncing(true);
+                setTimeout(() => setSyncing(false), 500);
+            };
+
+            // SYNC-ZONE-START:APP_SHARED_STATE
+            const [viewMode, setViewMode] = useState('horizontal');
+            const [activeSlot, setActiveSlot] = useState(null);
+            const [modalConfig, setModalConfig] = useState(null);
             const [isManageModalOpen, setIsManageModalOpen] = useState(false);
             const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
             const [isSelectCourtModalOpen, setIsSelectCourtModalOpen] = useState(false);
             const [isMemberListModalOpen, setIsMemberListModalOpen] = useState(false);
-
             const [newSelection, setNewSelection] = useState(new Set());
             const [deleteSelection, setDeleteSelection] = useState(new Set());
             const [selectedCourt, setSelectedCourt] = useState(COURTS[0].name);
 
             const grid1Ref = useRef(null);
             const grid2Ref = useRef(null);
+            const [dragSelection, setDragSelection] = useState({ isDragging: false, startKey: null, currentKey: null, action: null });
 
             useEffect(() => {
                 const el1 = grid1Ref.current;
@@ -741,38 +821,20 @@
                 return () => { el1.removeEventListener('scroll', onScroll1); el2.removeEventListener('scroll', onScroll2); };
             }, [viewMode]);
 
-            const allSchedules = useMemo(() => [
-                { ...MOCK_SCHEDULES[0], slots: Array.from(mySlots) },
-                ...MOCK_SCHEDULES.slice(1)
-            ], [mySlots]);
-
             const heatmap = useMemo(() => {
                 const map = {};
-                allSchedules.forEach(entry => entry.slots.forEach(slot => { map[slot] = (map[slot] || 0) + 1; }));
+                allSchedules.forEach(entry => entry.slots?.forEach(slot => { map[slot] = (map[slot] || 0) + 1; }));
                 return map;
             }, [allSchedules]);
 
             const slotUsers = useMemo(() => {
                 const map = {};
-                allSchedules.forEach(entry => entry.slots.forEach(slot => {
+                allSchedules.forEach(entry => entry.slots?.forEach(slot => {
                     if (!map[slot]) map[slot] = [];
                     map[slot].push({ name: entry.name, photo: entry.photo });
                 }));
                 return map;
             }, [allSchedules]);
-
-            const handleFinalSave = () => {
-                const next = { ...bookedSlots };
-                deleteSelection.forEach(k => delete next[k]);
-                newSelection.forEach(k => { next[k] = { court: selectedCourt, user: MOCK_ME.displayName }; });
-                setBookedSlots(next);
-                setIsSelectCourtModalOpen(false);
-                setIsManageModalOpen(false);
-                setNewSelection(new Set());
-                setDeleteSelection(new Set());
-            };
-
-            const [dragSelection, setDragSelection] = useState({ isDragging: false, startKey: null, currentKey: null, action: null });
 
             const currentRange = useMemo(() => {
                 if (!dragSelection.startKey || !dragSelection.currentKey) return new Set();
@@ -782,12 +844,10 @@
                 const startY = TIMES.indexOf(startTime);
                 const endX = DAYS.indexOf(endDay);
                 const endY = TIMES.indexOf(endTime);
-
                 const minX = Math.min(startX, endX);
                 const maxX = Math.max(startX, endX);
                 const minY = Math.min(startY, endY);
                 const maxY = Math.max(startY, endY);
-
                 const range = new Set();
                 for (let x = minX; x <= maxX; x++) {
                     for (let y = minY; y <= maxY; y++) {
@@ -801,26 +861,7 @@
                 const handleMouseUp = () => {
                     setDragSelection(prev => {
                         if (prev.isDragging && prev.startKey && prev.currentKey) {
-                            const [sD, sT] = prev.startKey.split('-');
-                            const [eD, eT] = prev.currentKey.split('-');
-                            const minX = Math.min(DAYS.indexOf(sD), DAYS.indexOf(eD));
-                            const maxX = Math.max(DAYS.indexOf(sD), DAYS.indexOf(eD));
-                            const minY = Math.min(TIMES.indexOf(sT), TIMES.indexOf(eT));
-                            const maxY = Math.max(TIMES.indexOf(sT), TIMES.indexOf(eT));
-                            
-                            setMySlots(old => {
-                                const next = new Set(old);
-                                for(let x = minX; x <= maxX; x++) {
-                                    for(let y = minY; y <= maxY; y++) {
-                                        const k = `${DAYS[x]}-${TIMES[y]}`;
-                                        if (prev.action === 'select') next.add(k);
-                                        else next.delete(k);
-                                    }
-                                }
-                                return next;
-                            });
-                            setSyncing(true);
-                            setTimeout(() => setSyncing(false), 500);
+                            applySlotSelectionRange(prev.action, currentRange);
                         }
                         return { isDragging: false, startKey: null, currentKey: null, action: null };
                     });
@@ -844,17 +885,17 @@
                 window.addEventListener('mouseup', handleMouseUp);
                 window.addEventListener('touchend', handleMouseUp);
                 window.addEventListener('touchmove', handleTouchMove, { passive: true });
-                
+
                 return () => {
                     window.removeEventListener('mouseup', handleMouseUp);
                     window.removeEventListener('touchend', handleMouseUp);
                     window.removeEventListener('touchmove', handleTouchMove);
                 };
-            }, []);
+            }, [currentRange]);
 
             const handleMouseDown = (key) => {
                 const action = mySlots.has(key) ? 'deselect' : 'select';
-                setDragSelection({ isDragging: true, startKey: key, currentKey: key, action: action });
+                setDragSelection({ isDragging: true, startKey: key, currentKey: key, action });
             };
 
             const handleMouseEnter = (key) => {
@@ -863,7 +904,20 @@
                     return { ...prev, currentKey: key };
                 });
             };
+            // SYNC-ZONE-END:APP_SHARED_STATE
 
+            const handleFinalSave = () => {
+                const next = { ...bookedSlots };
+                deleteSelection.forEach(k => delete next[k]);
+                newSelection.forEach(k => { next[k] = { court: selectedCourt, user: user.displayName }; });
+                setBookedSlots(next);
+                setIsSelectCourtModalOpen(false);
+                setIsManageModalOpen(false);
+                setNewSelection(new Set());
+                setDeleteSelection(new Set());
+            };
+
+            // SYNC-ZONE-START:APP_RENDER
             return (
                 <div className="min-h-screen p-4 md:p-6 relative">
                     <div className={`grid grid-cols-1 gap-4 mx-auto items-start ${viewMode === 'horizontal' ? 'lg:grid-cols-12 max-w-[1600px]' : 'lg:grid-cols-12 max-w-[1400px]'}`}>
@@ -873,9 +927,9 @@
                                 <section className="card p-5 flex flex-col">
                                     <SectionHeader title="1. Lịch cá nhân" colorClass="text-[#04BADE]" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>}>
                                         <div className="flex items-center gap-2">
-                                            <FixedToggle fixed={fixed} onToggle={() => { setFixed(!fixed); setSyncing(true); setTimeout(() => setSyncing(false), 500); }} />
-                                            <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ chọn tất cả các ca trong tuần đó!', onConfirm: () => { const all = new Set(); DAYS.forEach(d => TIMES.forEach(t => all.add(`${d}-${t}`))); setMySlots(all); setModalConfig(null); } })} className="px-2.5 py-1 rounded-lg border border-[#04BADE]/30 bg-[#04BADE]/10 text-[#04BADE] text-[10px] font-semibold hover:bg-[#04BADE]/20 transition-all">Chọn tất cả</button>
-                                            <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ xoá toàn bộ lịch đã chọn đó!', onConfirm: () => { setMySlots(new Set()); setModalConfig(null); } })} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all">Bỏ chọn</button>
+                                            <FixedToggle fixed={fixed} onToggle={toggleFixed} />
+                                            <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ chọn tất cả các ca trong tuần đó!', onConfirm: handleSelectAll })} className="px-2.5 py-1 rounded-lg border border-[#04BADE]/30 bg-[#04BADE]/10 text-[#04BADE] text-[10px] font-semibold hover:bg-[#04BADE]/20 transition-all">Chọn tất cả</button>
+                                            <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ xoá toàn bộ lịch đã chọn đó!', onConfirm: handleClearAll })} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all">Bỏ chọn</button>
                                         </div>
                                     </SectionHeader>
                                     <TimeGridHorizontal innerRef={grid1Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
@@ -971,7 +1025,7 @@
                         )}
 
                         <div className="order-1 lg:order-none lg:row-span-2 lg:sticky lg:top-4 flex flex-col gap-4 lg:h-[calc(100vh-48px)] lg:col-span-2">
-                            <SidebarTop syncing={syncing} onOpenManage={() => { setNewSelection(new Set()); setDeleteSelection(new Set()); setIsManageModalOpen(true); }} onOpenCourts={() => setIsCourtModalOpen(true)} viewMode={viewMode} setViewMode={setViewMode} />
+                            <SidebarTop syncing={syncing} idleSyncLabel={idleSyncLabel} user={user} logout={logout} onOpenManage={() => { setNewSelection(new Set()); setDeleteSelection(new Set()); setIsManageModalOpen(true); }} onOpenCourts={() => setIsCourtModalOpen(true)} viewMode={viewMode} setViewMode={setViewMode} />
                             <div className="hidden lg:flex flex-col flex-1 min-h-0">
                                 <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
                             </div>
@@ -989,6 +1043,7 @@
                     </div>
                 </div>
             );
+            // SYNC-ZONE-END:APP_RENDER
         }
 
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
