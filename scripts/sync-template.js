@@ -9,8 +9,7 @@ const zones = [
     'SHARED_CONSTANTS',
     'SHARED_UTILS',
     'SHARED_COMPONENTS',
-    'APP_SHARED_STATE',
-    'APP_RENDER',
+    'SHARED_SHELL',
 ];
 
 function read(filePath) {

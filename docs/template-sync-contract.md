@@ -1,11 +1,12 @@
 # Template Sync Contract
 
-`design/template.html` là source of truth cho UI. `index.html` chỉ giữ phần production-specific:
+`design/template.html` là source of truth cho shared UI shell. `index.html` chỉ giữ phần production-specific:
 
 - Firebase init
 - auth lifecycle
 - Firestore read/write
-- mock/real data source
+- embedded browser guard
+- mock/real data source adapter
 
 ## Sync zones
 
@@ -14,8 +15,7 @@ Script `node scripts/sync-template.js` sẽ copy đúng các zone này từ `des
 1. `SHARED_CONSTANTS`
 2. `SHARED_UTILS`
 3. `SHARED_COMPONENTS`
-4. `APP_SHARED_STATE`
-5. `APP_RENDER`
+4. `SHARED_SHELL`
 
 ## Không được sửa tay trong `index.html`
 
@@ -28,40 +28,40 @@ Chỉ sửa các phần ngoài zone:
 - `<script type="module">` Firebase bootstrap
 - login/logout/auth hooks
 - Firestore subscribe/save logic
-- production-only guards như loading/login screen gate
-- callback data handlers:
-  - `save`
-  - `toggleFixed`
-  - `handleSelectAll`
-  - `handleClearAll`
-  - `applySlotSelectionRange`
-  - `saveBooking`
-  - `handleFinalSave`
+- production-only guards:
+  - `EmbeddedBrowserBlockedScreen`
+  - `getEmbeddedBrowserContext`
+  - `openCurrentUrlInChrome`
+  - `openCurrentUrlInExternalBrowser`
+  - `copyCurrentUrl`
+- production `App()` adapter
 
-## Data contract mà UI đang expect
+## Data contract của `AppShell`
 
-Các biến/state:
+Props:
 
 - `user`
+- `idleSyncLabel`
+- `syncing`
 - `allSchedules`
 - `mySlots`
 - `fixed`
-- `syncing`
 - `bookedSlots`
-- `idleSyncLabel`
+- `onLogout()`
+- `onSaveSchedule(nextSlots, nextFixed)`
+- `onSaveBookings({ newSelection, deleteSelection, selectedCourt })`
 
-Các callback:
+Quy tắc:
 
-- `logout`
-- `toggleFixed`
-- `handleSelectAll`
-- `handleClearAll`
-- `applySlotSelectionRange(action, range)`
-- `handleFinalSave`
+- `AppShell` chỉ giữ UI-local state và derived data thuần giao diện
+- mọi thay đổi persisted phải đi qua `onSaveSchedule` hoặc `onSaveBookings`
+- `index.html` không được đưa Firebase/Auth/Firestore vào shared zone
+- `design/template.html` không được sync mock persistence logic sang production
 
 ## Quy trình chuẩn
 
-1. Sửa UI trong `design/template.html`
+1. Sửa shared UI shell trong `design/template.html`
 2. Chạy `node scripts/sync-template.js`
-3. Mở `index.html` kiểm tra runtime
-4. Nếu UI cần thêm data mới, chỉ bổ sung phần data-layer ở `index.html`
+3. Kiểm tra `index.html` vẫn giữ nguyên production adapter và embedded-browser fix
+4. Mở `index.html` kiểm tra runtime
+5. Nếu UI cần thêm data mới, chỉ bổ sung phần data-layer ở adapter tương ứng

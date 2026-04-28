@@ -71,6 +71,16 @@
             animation: fadeIn 0.25s ease forwards;
         }
 
+        @media (hover: none) {
+            button:hover {
+                background-color: inherit !important;
+                border-color: inherit !important;
+                color: inherit !important;
+                box-shadow: none !important;
+                transform: none !important;
+            }
+        }
+
         .mock-badge {
             position: fixed;
             bottom: 16px;
@@ -165,6 +175,29 @@
             return ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][gmt7.getDay()];
         };
 
+        const buildSlotRange = (startKey, endKey) => {
+            if (!startKey || !endKey) return new Set();
+            const [startDay, startTime] = startKey.split('-');
+            const [endDay, endTime] = endKey.split('-');
+            const startX = DAYS.indexOf(startDay);
+            const startY = TIMES.indexOf(startTime);
+            const endX = DAYS.indexOf(endDay);
+            const endY = TIMES.indexOf(endTime);
+            const minX = Math.min(startX, endX);
+            const maxX = Math.max(startX, endX);
+            const minY = Math.min(startY, endY);
+            const maxY = Math.max(startY, endY);
+            const range = new Set();
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    range.add(`${DAYS[x]}-${TIMES[y]}`);
+                }
+            }
+
+            return range;
+        };
+
         // SYNC-ZONE-END:SHARED_UTILS
 
         // SYNC-ZONE-START:SHARED_COMPONENTS
@@ -204,6 +237,20 @@
                 <div className="absolute right-0 top-full mt-1.5 w-56 bg-gray-900 text-white text-[10px] leading-relaxed rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
                     Khi bật, lịch của bạn sẽ cố định hàng tuần và không bị tự động xoá sau mỗi ngày.
                 </div>
+            </div>
+        );
+
+        const DayTimeHeaderIcon = ({ path }) => (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d={path} />
+            </svg>
+        );
+
+        const SelectionActionButtons = ({ fixed, onToggleFixed, onSelectAll, onClearAll, clearLabel = 'Bỏ chọn' }) => (
+            <div className="flex items-center gap-2">
+                <FixedToggle fixed={fixed} onToggle={onToggleFixed} />
+                <button onClick={onSelectAll} className="px-2.5 py-1 rounded-lg border border-[#04BADE]/30 bg-[#04BADE]/10 text-[#04BADE] text-[10px] font-semibold hover:bg-[#04BADE]/20 transition-all">Chọn tất cả</button>
+                <button onClick={onClearAll} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all">{clearLabel}</button>
             </div>
         );
 
@@ -318,14 +365,16 @@
                                         return (
                                             <div key={day} className="grid gap-1.5 relative" style={{ gridTemplateColumns: gridTemplate }}>
                                                 {i === todayIndex && (
-                                                    <div className="absolute pointer-events-none z-[10]" style={{ left: '54px', right: '-4px', top: '-2px', bottom: '-2px' }}>
-                                                        <div className="absolute inset-0 border-[#04BADE] rounded-r-[10px]" style={{ borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderRightWidth: '1.5px', borderLeftWidth: '0' }}></div>
-                                                    </div>
+                                                    <React.Fragment>
+                                                        <div className="absolute pointer-events-none z-[10]" style={{ left: '0', width: '56px', top: '-2px', bottom: '-2px' }}>
+                                                            <div className="absolute inset-0 border-[#04BADE] rounded-l-[10px]" style={{ borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '0' }}></div>
+                                                        </div>
+                                                        <div className="absolute pointer-events-none z-[10]" style={{ left: '54px', right: '-4px', top: '-2px', bottom: '-2px' }}>
+                                                            <div className="absolute inset-0 border-[#04BADE] rounded-r-[10px]" style={{ borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderRightWidth: '1.5px', borderLeftWidth: '0' }}></div>
+                                                        </div>
+                                                    </React.Fragment>
                                                 )}
-                                                <div className={`sticky left-0 z-[40] w-[48px] flex items-center justify-end pr-[14px] text-right select-none text-[10px] font-bold ${day === todayStr ? 'text-[#04BADE]' : 'text-gray-500'}`}>
-                                                    {i === todayIndex && (
-                                                        <div className="absolute top-[-2px] bottom-[-2px] right-[-6px] pointer-events-none border-[#04BADE] rounded-l-[10px]" style={{ left: '4px', borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '0' }}></div>
-                                                    )}
+                                                <div className={`sticky left-0 z-[40] w-[56px] flex items-center justify-end pr-2 text-right select-none text-[10px] font-bold ${day === todayStr ? 'text-[#04BADE]' : 'text-gray-500'}`}>
                                                     <span className="relative z-10">{day}</span>
                                                 </div>
                                                 {times.map((time, idx) => {
@@ -354,120 +403,47 @@
 
         // ── 5. MODAL COMPONENTS ──────────────────────────────────
         const ManageBookingModal = ({ heatmap, bookedSlots, newSelection, setNewSelection, deleteSelection, setDeleteSelection, onClose, onSelectCourt, viewMode }) => {
-            const [dragSelection, setDragSelection] = useState({ isDragging: false, startKey: null, currentKey: null, action: null, type: null });
-
-            const currentRange = useMemo(() => {
-                if (!dragSelection.startKey || !dragSelection.currentKey) return new Set();
-                const [startDay, startTime] = dragSelection.startKey.split('-');
-                const [endDay, endTime] = dragSelection.currentKey.split('-');
-                const startX = DAYS.indexOf(startDay);
-                const startY = TIMES.indexOf(startTime);
-                const endX = DAYS.indexOf(endDay);
-                const endY = TIMES.indexOf(endTime);
-
-                const minX = Math.min(startX, endX);
-                const maxX = Math.max(startX, endX);
-                const minY = Math.min(startY, endY);
-                const maxY = Math.max(startY, endY);
-
-                const range = new Set();
-                for (let x = minX; x <= maxX; x++) {
-                    for (let y = minY; y <= maxY; y++) {
-                        range.add(`${DAYS[x]}-${TIMES[y]}`);
-                    }
+            const applyManageRange = (action, range, meta) => {
+                if (meta?.type === 'delete') {
+                    setDeleteSelection(old => {
+                        const next = new Set(old);
+                        range.forEach(key => {
+                            if (!bookedSlots[key]) return;
+                            if (action === 'select') next.add(key);
+                            else next.delete(key);
+                        });
+                        return next;
+                    });
+                    return;
                 }
-                return range;
-            }, [dragSelection]);
 
-            useEffect(() => {
-                const handleMouseUp = () => {
-                    setDragSelection(prev => {
-                        if (prev.isDragging && prev.startKey && prev.currentKey) {
-                            const [sD, sT] = prev.startKey.split('-');
-                            const [eD, eT] = prev.currentKey.split('-');
-                            const minX = Math.min(DAYS.indexOf(sD), DAYS.indexOf(eD));
-                            const maxX = Math.max(DAYS.indexOf(sD), DAYS.indexOf(eD));
-                            const minY = Math.min(TIMES.indexOf(sT), TIMES.indexOf(eT));
-                            const maxY = Math.max(TIMES.indexOf(sT), TIMES.indexOf(eT));
-                            
-                            const range = new Set();
-                            for(let x = minX; x <= maxX; x++) {
-                                for(let y = minY; y <= maxY; y++) {
-                                    range.add(`${DAYS[x]}-${TIMES[y]}`);
-                                }
-                            }
-                            
-                            if (prev.type === 'delete') {
-                                setDeleteSelection(old => {
-                                    const next = new Set(old);
-                                    range.forEach(k => {
-                                        if (bookedSlots[k]) {
-                                            if (prev.action === 'select') next.add(k);
-                                            else next.delete(k);
-                                        }
-                                    });
-                                    return next;
-                                });
-                            } else {
-                                setNewSelection(old => {
-                                    const next = new Set(old);
-                                    range.forEach(k => {
-                                        if (!bookedSlots[k]) {
-                                            if (prev.action === 'select') next.add(k);
-                                            else next.delete(k);
-                                        }
-                                    });
-                                    return next;
-                                });
-                            }
-                        }
-                        return { isDragging: false, startKey: null, currentKey: null, action: null, type: null };
+                setNewSelection(old => {
+                    const next = new Set(old);
+                    range.forEach(key => {
+                        if (bookedSlots[key]) return;
+                        if (action === 'select') next.add(key);
+                        else next.delete(key);
                     });
-                };
+                    return next;
+                });
+            };
 
-                const handleTouchMove = (e) => {
-                    setDragSelection(prev => {
-                        if (!prev.isDragging) return prev;
-                        const touch = e.touches[0];
-                        const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                        if (el) {
-                            const key = el.getAttribute('data-slot-manage');
-                            if (key && key !== prev.currentKey) {
-                                return { ...prev, currentKey: key };
-                            }
-                        }
-                        return prev;
-                    });
-                };
-
-                window.addEventListener('mouseup', handleMouseUp);
-                window.addEventListener('touchend', handleMouseUp);
-                window.addEventListener('touchmove', handleTouchMove, { passive: true });
-                return () => {
-                    window.removeEventListener('mouseup', handleMouseUp);
-                    window.removeEventListener('touchend', handleMouseUp);
-                    window.removeEventListener('touchmove', handleTouchMove);
-                };
-            }, [bookedSlots, setDeleteSelection, setNewSelection]);
+            const { dragSelection, currentRange, startSelection, updateSelection } = usePointerRangeSelection({
+                dataAttribute: 'data-slot-manage',
+                onApplyRange: applyManageRange,
+            });
 
             const handleMouseDown = (key, isBooked) => {
                 const type = isBooked ? 'delete' : 'new';
-                let action = 'select';
-                if (isBooked) action = deleteSelection.has(key) ? 'deselect' : 'select';
-                else action = newSelection.has(key) ? 'deselect' : 'select';
-                setDragSelection({ isDragging: true, startKey: key, currentKey: key, action, type });
-            };
-
-            const handleMouseEnter = (key) => {
-                setDragSelection(prev => {
-                    if (!prev.isDragging || prev.currentKey === key) return prev;
-                    return { ...prev, currentKey: key };
-                });
+                const action = isBooked
+                    ? (deleteSelection.has(key) ? 'deselect' : 'select')
+                    : (newSelection.has(key) ? 'deselect' : 'select');
+                startSelection(key, action, { type });
             };
 
             return (
             <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
-                <div className={`bg-white p-5 rounded-3xl w-full shadow-2xl flex flex-col h-[85vh] ${viewMode === 'horizontal' ? 'max-w-5xl' : 'max-w-3xl'}`}>
+                <div className={`bg-white p-5 rounded-3xl w-full shadow-2xl flex flex-col h-[85dvh] ${viewMode === 'horizontal' ? 'max-w-5xl' : 'max-w-3xl'}`}>
                     <div className="flex items-center justify-between mb-4 shrink-0">
                         <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><span>🏸</span> Quản lý đặt sân</h3>
                         <div className="flex gap-2">
@@ -487,11 +463,12 @@
                                 const isHovered = currentRange.has(key);
                                 let isNew = newSelection.has(key);
                                 let isDel = deleteSelection.has(key);
+                                const selectionType = dragSelection.meta?.type;
 
                                 if (isHovered) {
-                                    if (dragSelection.type === 'delete' && isBooked) {
+                                    if (selectionType === 'delete' && isBooked) {
                                         isDel = dragSelection.action === 'select';
-                                    } else if (dragSelection.type === 'new' && !isBooked) {
+                                    } else if (selectionType === 'new' && !isBooked) {
                                         isNew = dragSelection.action === 'select';
                                     }
                                 }
@@ -503,11 +480,11 @@
                                 else if (count > 0) { const c = heatColor(count); bg = c.bg; border = c.border; text = c.text; }
 
                                 return (
-                                    <button key={key} data-slot-manage={key} onMouseDown={(e) => { e.preventDefault(); handleMouseDown(key, isBooked); }} onMouseEnter={() => handleMouseEnter(key)} onTouchStart={() => handleMouseDown(key, isBooked)}
-                                        style={{ background: bg, color: text, borderColor: border }} className={`w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold relative transition-all shadow-sm hover:brightness-95 ${isHovered ? (dragSelection.type === 'delete' ? 'ring-2 ring-rose-500/50 z-10' : 'ring-2 ring-amber-500/50 z-10') : ''}`}>
+                                    <button key={key} data-slot-manage={key} onMouseDown={(e) => { e.preventDefault(); handleMouseDown(key, isBooked); }} onMouseEnter={() => updateSelection(key)} onTouchStart={() => handleMouseDown(key, isBooked)}
+                                        style={{ background: bg, color: text, borderColor: border }} className={`w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold relative transition-all shadow-sm hover:brightness-95 ${isHovered ? (selectionType === 'delete' ? 'ring-2 ring-rose-500/50 z-10' : 'ring-2 ring-amber-500/50 z-10') : ''}`}>
                                         {count > 0 ? count : ''}
-                                        {(isBooked || isNew) && !isDel && <span className="absolute bottom-0.5 right-0.5 text-[10px]">🏸</span>}
-                                        {isDel && <span className="absolute inset-0 flex items-center justify-center text-white bg-rose-500/20 rounded-xl">✕</span>}
+                                        {(isBooked || isNew) && !isDel && <span className="absolute bottom-0.5 right-0.5 text-[10px] pointer-events-none">🏸</span>}
+                                        {isDel && <span className="absolute inset-0 flex items-center justify-center text-white bg-rose-500/20 rounded-xl pointer-events-none">✕</span>}
                                     </button>
                                 );
                             }} />;
@@ -535,7 +512,7 @@
                         {newCount > 0 && (
                             <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
                                 <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Thêm mới/Cập nhật {newCount} ca:</p>
-                                <select value={selectedCourt} onChange={(e) => setSelectedCourt(e.target.value)} className="w-full mt-2 p-2 bg-white border border-amber-200 rounded-lg text-xs font-bold outline-none focus:border-amber-400 transition-all">
+                                <select value={selectedCourt} onChange={(e) => setSelectedCourt(e.target.value)} className="w-full mt-2 p-2 bg-white border border-amber-200 rounded-lg text-[16px] font-bold outline-none focus:border-amber-400 transition-all">
                                     {COURTS.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                                 </select>
                             </div>
@@ -556,7 +533,7 @@
 
         const CourtListModal = ({ onClose }) => (
             <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
-                <div className="bg-white p-6 rounded-3xl max-w-4xl w-full shadow-2xl flex flex-col max-h-[85vh]">
+                <div className="bg-white p-6 rounded-3xl max-w-4xl w-full shadow-2xl flex flex-col max-h-[85dvh]">
                     <div className="flex items-center justify-between mb-6 shrink-0">
                         <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">📍 Danh sách sân</h3>
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition"><svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg></button>
@@ -639,6 +616,91 @@
                 </div>
             );
         }
+
+        const PersonalScheduleSection = ({
+            GridComponent,
+            innerRef,
+            fixed,
+            onToggleFixed,
+            onSelectAll,
+            onClearAll,
+            days,
+            times,
+            mySlots,
+            currentRange,
+            dragSelection,
+            onStartDrag,
+            onStartTouchDrag,
+            onContinueDrag,
+            sectionClassName = 'h-auto lg:h-[calc(100dvh-48px)]',
+        }) => (
+            <section className={`card p-5 flex flex-col ${sectionClassName}`}>
+                <SectionHeader
+                    title="1. Lịch cá nhân"
+                    colorClass="text-[#04BADE]"
+                    icon={<DayTimeHeaderIcon path="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" />}
+                >
+                    <SelectionActionButtons
+                        fixed={fixed}
+                        onToggleFixed={onToggleFixed}
+                        onSelectAll={onSelectAll}
+                        onClearAll={onClearAll}
+                    />
+                </SectionHeader>
+                <GridComponent innerRef={innerRef} days={days} times={times} renderCell={(day, time) => {
+                    const key = `${day}-${time}`;
+                    const isHovered = currentRange.has(key);
+                    let selected = mySlots.has(key);
+                    if (isHovered) selected = dragSelection.action === 'select';
+                    const dragAction = mySlots.has(key) ? 'deselect' : 'select';
+
+                    return (
+                        <button
+                            key={key}
+                            data-slot={key}
+                            onMouseDown={(e) => { e.preventDefault(); onStartDrag(key, dragAction); }}
+                            onMouseEnter={() => onContinueDrag(key)}
+                            onTouchStart={(e) => onStartTouchDrag(key, dragAction, e)}
+                            onContextMenu={(e) => { if (/Mobi|Android/i.test(navigator.userAgent)) e.preventDefault(); }}
+                            style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
+                            className={`w-full rounded-xl border h-9 flex items-center justify-center transition-all duration-150 ${selected ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40'} ${isHovered ? 'ring-2 ring-[#04BADE]/50 z-10' : ''}`}
+                        >
+                            {selected && <svg className="w-3 h-3 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>}
+                        </button>
+                    );
+                }} />
+            </section>
+        );
+
+        const SummaryScheduleSection = ({ GridComponent, innerRef, days, times, allSchedules, heatmap, bookedSlots, mySlots, activeSlot, setActiveSlot, onOpenMembers, sectionClassName = 'h-auto lg:h-[calc(100dvh-48px)]' }) => (
+            <section className={`card p-5 flex flex-col ${sectionClassName}`}>
+                <SectionHeader
+                    title="2. Lịch tổng kết"
+                    colorClass="text-rose-400"
+                    icon={<DayTimeHeaderIcon path="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8M16 3.13a4 4 0 010 7.75M23 21v-2a4 4 0 00-3-3.87" />}
+                >
+                    <button onClick={onOpenMembers} className="text-[10px] text-gray-400 font-bold bg-gray-50 hover:bg-gray-100 border border-gray-100 px-2 py-1 rounded-lg transition-all shadow-sm">
+                        {allSchedules.length} thành viên
+                    </button>
+                </SectionHeader>
+                <GridComponent innerRef={innerRef} days={days} times={times} renderCell={(day, time) => {
+                    const key = `${day}-${time}`;
+                    const count = heatmap[key] || 0;
+                    const colors = heatColor(count);
+                    const isActive = activeSlot === key;
+                    const info = bookedSlots[key];
+                    const isSelected = mySlots.has(key);
+
+                    return (
+                        <button key={key} onClick={() => setActiveSlot(isActive ? null : key)} style={{ background: colors.bg, color: colors.text, borderColor: isActive ? '#6366f1' : colors.border, outline: isActive ? '2px solid #c7d2fe' : 'none', outlineOffset: '1px' }} className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all hover:brightness-95">
+                            {count > 0 ? count : ''}
+                            {info && <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm pointer-events-none" title={`${info.court} - ${info.user}`}>🏸</span>}
+                            {isSelected && <div className="absolute top-0.5 right-0.5 text-[#04BADE] drop-shadow-sm pointer-events-none" title="Ca bạn đã chọn"><svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg></div>}
+                        </button>
+                    );
+                }} />
+            </section>
+        );
 
         const SidebarTop = ({ syncing, idleSyncLabel, user, logout, onOpenManage, onOpenCourts, viewMode, setViewMode }) => (
             <div className="card p-4 shrink-0 flex flex-col gap-4">
@@ -740,7 +802,373 @@
                 </div>
             );
         };
+
+        const usePointerRangeSelection = ({ dataAttribute, onApplyRange }) => {
+            const [dragSelection, setDragSelection] = useState({ isDragging: false, startKey: null, currentKey: null, action: null, meta: null });
+            const applyRangeRef = useRef(onApplyRange);
+            const dragStateRef = useRef({ isDragging: false });
+            const touchStateRef = useRef({ timer: null, startPos: null, pendingTap: null });
+
+            useEffect(() => {
+                applyRangeRef.current = onApplyRange;
+            }, [onApplyRange]);
+
+            const currentRange = useMemo(
+                () => buildSlotRange(dragSelection.startKey, dragSelection.currentKey),
+                [dragSelection]
+            );
+
+            useEffect(() => {
+                const handleGlobalPointerUp = () => {
+                    const ts = touchStateRef.current;
+                    if (ts.timer) {
+                        clearTimeout(ts.timer);
+                        ts.timer = null;
+                        
+                        if (ts.pendingTap) {
+                            const { key, action, meta } = ts.pendingTap;
+                            applyRangeRef.current(action, new Set([key]), meta);
+                        }
+                    }
+                    ts.pendingTap = null;
+                    ts.startPos = null;
+                    
+                    setDragSelection(prev => {
+                        if (prev.isDragging && prev.startKey && prev.currentKey) {
+                            applyRangeRef.current(prev.action, buildSlotRange(prev.startKey, prev.currentKey), prev.meta);
+                        }
+                        dragStateRef.current.isDragging = false;
+                        document.body.style.touchAction = '';
+                        document.body.classList.remove('select-none');
+                        return { isDragging: false, startKey: null, currentKey: null, action: null, meta: null };
+                    });
+                };
+
+                const handleGlobalTouchMove = (e) => {
+                    const touch = e.touches[0];
+                    const ts = touchStateRef.current;
+                    
+                    if (!dragStateRef.current.isDragging) {
+                        if (ts.startPos && ts.timer) {
+                            const dx = touch.clientX - ts.startPos.x;
+                            const dy = touch.clientY - ts.startPos.y;
+                            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                                clearTimeout(ts.timer);
+                                ts.timer = null;
+                                ts.pendingTap = null;
+                            }
+                        }
+                        return;
+                    }
+                    
+                    if (e.cancelable) e.preventDefault();
+
+                    setDragSelection(prev => {
+                        if (!prev.isDragging) return prev;
+                        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                        if (!el) return prev;
+                        const targetEl = el.closest(`[${dataAttribute}]`);
+                        if (!targetEl) return prev;
+                        const key = targetEl.getAttribute(dataAttribute);
+                        if (!key || key === prev.currentKey) return prev;
+                        return { ...prev, currentKey: key };
+                    });
+                };
+
+                window.addEventListener('mouseup', handleGlobalPointerUp);
+                window.addEventListener('touchend', handleGlobalPointerUp);
+                window.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+
+                return () => {
+                    window.removeEventListener('mouseup', handleGlobalPointerUp);
+                    window.removeEventListener('touchend', handleGlobalPointerUp);
+                    window.removeEventListener('touchmove', handleGlobalTouchMove);
+                };
+            }, [dataAttribute]);
+
+            const startSelection = (key, action, meta = null) => {
+                dragStateRef.current.isDragging = true;
+                setDragSelection({ isDragging: true, startKey: key, currentKey: key, action, meta });
+            };
+            
+            const startTouchSelection = (key, action, e, meta = null) => {
+                const touch = e.touches[0];
+                const ts = touchStateRef.current;
+                ts.startPos = { x: touch.clientX, y: touch.clientY };
+                ts.pendingTap = { key, action, meta };
+                
+                if (ts.timer) clearTimeout(ts.timer);
+                
+                ts.timer = setTimeout(() => {
+                    ts.timer = null;
+                    ts.pendingTap = null;
+                    dragStateRef.current.isDragging = true;
+                    
+                    if (window.navigator && window.navigator.vibrate) {
+                        window.navigator.vibrate(50);
+                    }
+                    document.body.style.touchAction = 'none';
+                    document.body.classList.add('select-none');
+                    
+                    setDragSelection({ isDragging: true, startKey: key, currentKey: key, action, meta });
+                }, 300);
+            };
+
+            const updateSelection = (key) => {
+                setDragSelection(prev => {
+                    if (!prev.isDragging || prev.currentKey === key) return prev;
+                    return { ...prev, currentKey: key };
+                });
+            };
+
+            return { dragSelection, currentRange, startSelection, startTouchSelection, updateSelection };
+        };
         // SYNC-ZONE-END:SHARED_COMPONENTS
+
+        // SYNC-ZONE-START:SHARED_SHELL
+        const buildAllSlotsSet = () => {
+            const all = new Set();
+            DAYS.forEach(day => TIMES.forEach(time => all.add(`${day}-${time}`)));
+            return all;
+        };
+
+        function AppShell({
+            user,
+            idleSyncLabel,
+            syncing,
+            allSchedules,
+            mySlots,
+            fixed,
+            bookedSlots,
+            onLogout,
+            onSaveSchedule,
+            onSaveBookings,
+        }) {
+            const [viewMode, setViewMode] = useState('horizontal');
+            const [activeSlot, setActiveSlot] = useState(null);
+            const [modalConfig, setModalConfig] = useState(null);
+            const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+            const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
+            const [isSelectCourtModalOpen, setIsSelectCourtModalOpen] = useState(false);
+            const [isMemberListModalOpen, setIsMemberListModalOpen] = useState(false);
+            const [newSelection, setNewSelection] = useState(new Set());
+            const [deleteSelection, setDeleteSelection] = useState(new Set());
+            const [selectedCourt, setSelectedCourt] = useState(COURTS[0].name);
+
+            const grid1Ref = useRef(null);
+            const grid2Ref = useRef(null);
+            const {
+                dragSelection,
+                currentRange,
+                startSelection: startSlotSelection,
+                updateSelection: updateSlotSelection,
+            } = usePointerRangeSelection({
+                dataAttribute: 'data-slot',
+                onApplyRange: (action, range) => {
+                    const nextSlots = new Set(mySlots);
+                    range.forEach(key => {
+                        if (action === 'select') nextSlots.add(key);
+                        else nextSlots.delete(key);
+                    });
+                    onSaveSchedule(nextSlots, fixed);
+                },
+            });
+
+            useEffect(() => {
+                const el1 = grid1Ref.current;
+                const el2 = grid2Ref.current;
+                if (!el1 || !el2) return;
+
+                let lock = false;
+                const onScroll1 = () => {
+                    if (lock) return;
+                    lock = true;
+                    el2.scrollTop = el1.scrollTop;
+                    el2.scrollLeft = el1.scrollLeft;
+                    window.requestAnimationFrame(() => { lock = false; });
+                };
+                const onScroll2 = () => {
+                    if (lock) return;
+                    lock = true;
+                    el1.scrollTop = el2.scrollTop;
+                    el1.scrollLeft = el2.scrollLeft;
+                    window.requestAnimationFrame(() => { lock = false; });
+                };
+
+                el1.addEventListener('scroll', onScroll1, { passive: true });
+                el2.addEventListener('scroll', onScroll2, { passive: true });
+
+                return () => {
+                    el1.removeEventListener('scroll', onScroll1);
+                    el2.removeEventListener('scroll', onScroll2);
+                };
+            }, [viewMode]);
+
+            const heatmap = useMemo(() => {
+                const map = {};
+                allSchedules.forEach(entry => entry.slots?.forEach(slot => { map[slot] = (map[slot] || 0) + 1; }));
+                return map;
+            }, [allSchedules]);
+
+            const slotUsers = useMemo(() => {
+                const map = {};
+                allSchedules.forEach(entry => entry.slots?.forEach(slot => {
+                    if (!map[slot]) map[slot] = [];
+                    map[slot].push({ name: entry.name, photo: entry.photo });
+                }));
+                return map;
+            }, [allSchedules]);
+
+            const openSelectAllConfirm = () => setModalConfig({
+                message: 'Mày chắc chưa? Sẽ chọn tất cả các ca trong tuần đó!',
+                onConfirm: () => {
+                    onSaveSchedule(buildAllSlotsSet(), fixed);
+                    setModalConfig(null);
+                },
+            });
+
+            const openClearAllConfirm = () => setModalConfig({
+                message: 'Mày chắc chưa? Sẽ xoá toàn bộ lịch đã chọn đó!',
+                onConfirm: () => {
+                    onSaveSchedule(new Set(), fixed);
+                    setModalConfig(null);
+                },
+            });
+
+            const openManageBooking = () => {
+                setNewSelection(new Set());
+                setDeleteSelection(new Set());
+                setIsManageModalOpen(true);
+            };
+
+            const handleToggleFixed = () => {
+                onSaveSchedule(new Set(mySlots), !fixed);
+            };
+
+            const handleFinalSave = () => {
+                onSaveBookings({
+                    newSelection,
+                    deleteSelection,
+                    selectedCourt,
+                });
+                setIsSelectCourtModalOpen(false);
+                setIsManageModalOpen(false);
+                setNewSelection(new Set());
+                setDeleteSelection(new Set());
+            };
+
+            const isHorizontalView = viewMode === 'horizontal';
+            const GridComponent = isHorizontalView ? TimeGridHorizontal : TimeGridVertical;
+            const contentGridClass = isHorizontalView ? 'lg:col-span-10 flex flex-col gap-5 lg:h-[calc(100dvh-48px)] min-h-0' : 'lg:col-span-5';
+            const scheduleSectionClassName = isHorizontalView ? 'flex-1 min-h-0' : 'h-auto lg:h-[calc(100dvh-48px)]';
+            const shellClassName = `grid grid-cols-1 gap-4 mx-auto ${isHorizontalView ? 'items-stretch lg:grid-cols-12 max-w-[1600px]' : 'items-start lg:grid-cols-12 max-w-[1400px]'}`;
+
+            return (
+                <div className="min-h-screen min-h-[100dvh] p-4 md:p-6 relative">
+                    <div className={shellClassName}>
+                        {isHorizontalView ? (
+                            <div className={`order-2 lg:order-none ${contentGridClass}`}>
+                                <PersonalScheduleSection
+                                    GridComponent={GridComponent}
+                                    innerRef={grid1Ref}
+                                    fixed={fixed}
+                                    onToggleFixed={handleToggleFixed}
+                                    onSelectAll={openSelectAllConfirm}
+                                    onClearAll={openClearAllConfirm}
+                                    days={DAYS}
+                                    times={TIMES}
+                                    mySlots={mySlots}
+                                    currentRange={currentRange}
+                                    dragSelection={dragSelection}
+                                    onStartDrag={startSlotSelection}
+                                    onContinueDrag={updateSlotSelection}
+                                    sectionClassName={scheduleSectionClassName}
+                                />
+                                <SummaryScheduleSection
+                                    GridComponent={GridComponent}
+                                    innerRef={grid2Ref}
+                                    days={DAYS}
+                                    times={TIMES}
+                                    allSchedules={allSchedules}
+                                    heatmap={heatmap}
+                                    bookedSlots={bookedSlots}
+                                    mySlots={mySlots}
+                                    activeSlot={activeSlot}
+                                    setActiveSlot={setActiveSlot}
+                                    onOpenMembers={() => setIsMemberListModalOpen(true)}
+                                    sectionClassName={scheduleSectionClassName}
+                                />
+                            </div>
+                        ) : (
+                            <React.Fragment>
+                                <div className={`order-2 lg:order-none ${contentGridClass}`}>
+                                    <PersonalScheduleSection
+                                        GridComponent={GridComponent}
+                                        innerRef={grid1Ref}
+                                        fixed={fixed}
+                                        onToggleFixed={handleToggleFixed}
+                                        onSelectAll={openSelectAllConfirm}
+                                        onClearAll={openClearAllConfirm}
+                                        days={DAYS}
+                                        times={TIMES}
+                                        mySlots={mySlots}
+                                        currentRange={currentRange}
+                                        dragSelection={dragSelection}
+                                        onStartDrag={startSlotSelection}
+                                        onContinueDrag={updateSlotSelection}
+                                        sectionClassName={scheduleSectionClassName}
+                                    />
+                                </div>
+                                <div className="order-3 lg:order-none lg:col-span-5">
+                                    <SummaryScheduleSection
+                                        GridComponent={GridComponent}
+                                        innerRef={grid2Ref}
+                                        days={DAYS}
+                                        times={TIMES}
+                                        allSchedules={allSchedules}
+                                        heatmap={heatmap}
+                                        bookedSlots={bookedSlots}
+                                        mySlots={mySlots}
+                                        activeSlot={activeSlot}
+                                        setActiveSlot={setActiveSlot}
+                                        onOpenMembers={() => setIsMemberListModalOpen(true)}
+                                        sectionClassName={scheduleSectionClassName}
+                                    />
+                                </div>
+                            </React.Fragment>
+                        )}
+
+                        <div className="order-1 lg:order-none lg:row-span-2 lg:sticky lg:top-4 flex flex-col gap-4 min-h-0 lg:h-[calc(100dvh-48px)] lg:col-span-2">
+                            <SidebarTop syncing={syncing} idleSyncLabel={idleSyncLabel} user={user} logout={onLogout} onOpenManage={openManageBooking} onOpenCourts={() => setIsCourtModalOpen(true)} viewMode={viewMode} setViewMode={setViewMode} />
+                            <div className="hidden lg:flex flex-col flex-1 min-h-0">
+                                <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
+                            </div>
+                        </div>
+                        
+                        {/* Mobile Bottom Sheet for Detail */}
+                        <div className={`lg:hidden fixed inset-0 z-[120] transition-opacity duration-300 ${activeSlot ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                            <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setActiveSlot(null)}></div>
+                            <div className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 transform ${activeSlot ? 'translate-y-0' : 'translate-y-full'} flex flex-col`} style={{ maxHeight: '85dvh' }}>
+                                <div className="flex justify-center pt-3 pb-2 w-full active:bg-gray-50 rounded-t-3xl" onClick={() => setActiveSlot(null)}>
+                                    <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+                                </div>
+                                <div className="p-4 pt-0 flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
+                                    <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {isManageModalOpen && <ManageBookingModal heatmap={heatmap} bookedSlots={bookedSlots} newSelection={newSelection} setNewSelection={setNewSelection} deleteSelection={deleteSelection} setDeleteSelection={setDeleteSelection} onClose={() => setIsManageModalOpen(false)} onSelectCourt={() => setIsSelectCourtModalOpen(true)} viewMode={viewMode} />}
+                        {isSelectCourtModalOpen && <SelectCourtModal newCount={newSelection.size} delCount={deleteSelection.size} selectedCourt={selectedCourt} setSelectedCourt={setSelectedCourt} onBack={() => setIsSelectCourtModalOpen(false)} onSave={handleFinalSave} />}
+                        {isCourtModalOpen && <CourtListModal onClose={() => setIsCourtModalOpen(false)} />}
+                        {isMemberListModalOpen && <MemberListModal members={allSchedules} onClose={() => setIsMemberListModalOpen(false)} />}
+                        {modalConfig && <ConfirmationModal config={modalConfig} onClose={() => setModalConfig(null)} />}
+
+                    </div>
+                </div>
+            );
+        }
+        // SYNC-ZONE-END:SHARED_SHELL
 
         // ── 7. MAIN APP ──────────────────────────────────────────
         function App() {
@@ -760,290 +1188,55 @@
 
             const idleSyncLabel = 'MOCK';
 
-            const logout = () => alert('Logout mock');
-
-            const toggleFixed = () => {
-                setFixed(prev => !prev);
+            const pulseSync = () => {
                 setSyncing(true);
-                setTimeout(() => setSyncing(false), 500);
+                window.setTimeout(() => setSyncing(false), 500);
             };
 
-            const handleSelectAll = () => {
-                const all = new Set();
-                DAYS.forEach(day => TIMES.forEach(time => all.add(`${day}-${time}`)));
-                setMySlots(all);
-                setModalConfig(null);
+            const onSaveSchedule = (nextSlots, nextFixed) => {
+                setMySlots(new Set(nextSlots));
+                setFixed(nextFixed);
+                pulseSync();
             };
 
-            const handleClearAll = () => {
-                setMySlots(new Set());
-                setModalConfig(null);
-            };
-
-            const applySlotSelectionRange = (action, range) => {
-                setMySlots(old => {
-                    const next = new Set(old);
-                    range.forEach(key => {
-                        if (action === 'select') next.add(key);
-                        else next.delete(key);
+            const onSaveBookings = ({ newSelection, deleteSelection, selectedCourt }) => {
+                setBookedSlots(prev => {
+                    const next = { ...prev };
+                    deleteSelection.forEach(key => delete next[key]);
+                    newSelection.forEach(key => {
+                        next[key] = { court: selectedCourt, user: user.displayName };
                     });
                     return next;
                 });
-                setSyncing(true);
-                setTimeout(() => setSyncing(false), 500);
+                pulseSync();
             };
 
-            // SYNC-ZONE-START:APP_SHARED_STATE
-            const [viewMode, setViewMode] = useState('horizontal');
-            const [activeSlot, setActiveSlot] = useState(null);
-            const [modalConfig, setModalConfig] = useState(null);
-            const [isManageModalOpen, setIsManageModalOpen] = useState(false);
-            const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
-            const [isSelectCourtModalOpen, setIsSelectCourtModalOpen] = useState(false);
-            const [isMemberListModalOpen, setIsMemberListModalOpen] = useState(false);
-            const [newSelection, setNewSelection] = useState(new Set());
-            const [deleteSelection, setDeleteSelection] = useState(new Set());
-            const [selectedCourt, setSelectedCourt] = useState(COURTS[0].name);
-
-            const grid1Ref = useRef(null);
-            const grid2Ref = useRef(null);
-            const [dragSelection, setDragSelection] = useState({ isDragging: false, startKey: null, currentKey: null, action: null });
-
-            useEffect(() => {
-                const el1 = grid1Ref.current;
-                const el2 = grid2Ref.current;
-                if (!el1 || !el2) return;
-                let lock = false;
-                const onScroll1 = () => { if (!lock) { lock = true; el2.scrollTop = el1.scrollTop; el2.scrollLeft = el1.scrollLeft; window.requestAnimationFrame(() => lock = false); } };
-                const onScroll2 = () => { if (!lock) { lock = true; el1.scrollTop = el2.scrollTop; el1.scrollLeft = el2.scrollLeft; window.requestAnimationFrame(() => lock = false); } };
-                el1.addEventListener('scroll', onScroll1, { passive: true });
-                el2.addEventListener('scroll', onScroll2, { passive: true });
-                return () => { el1.removeEventListener('scroll', onScroll1); el2.removeEventListener('scroll', onScroll2); };
-            }, [viewMode]);
-
-            const heatmap = useMemo(() => {
-                const map = {};
-                allSchedules.forEach(entry => entry.slots?.forEach(slot => { map[slot] = (map[slot] || 0) + 1; }));
-                return map;
-            }, [allSchedules]);
-
-            const slotUsers = useMemo(() => {
-                const map = {};
-                allSchedules.forEach(entry => entry.slots?.forEach(slot => {
-                    if (!map[slot]) map[slot] = [];
-                    map[slot].push({ name: entry.name, photo: entry.photo });
-                }));
-                return map;
-            }, [allSchedules]);
-
-            const currentRange = useMemo(() => {
-                if (!dragSelection.startKey || !dragSelection.currentKey) return new Set();
-                const [startDay, startTime] = dragSelection.startKey.split('-');
-                const [endDay, endTime] = dragSelection.currentKey.split('-');
-                const startX = DAYS.indexOf(startDay);
-                const startY = TIMES.indexOf(startTime);
-                const endX = DAYS.indexOf(endDay);
-                const endY = TIMES.indexOf(endTime);
-                const minX = Math.min(startX, endX);
-                const maxX = Math.max(startX, endX);
-                const minY = Math.min(startY, endY);
-                const maxY = Math.max(startY, endY);
-                const range = new Set();
-                for (let x = minX; x <= maxX; x++) {
-                    for (let y = minY; y <= maxY; y++) {
-                        range.add(`${DAYS[x]}-${TIMES[y]}`);
-                    }
-                }
-                return range;
-            }, [dragSelection]);
-
-            useEffect(() => {
-                const handleMouseUp = () => {
-                    setDragSelection(prev => {
-                        if (prev.isDragging && prev.startKey && prev.currentKey) {
-                            applySlotSelectionRange(prev.action, currentRange);
-                        }
-                        return { isDragging: false, startKey: null, currentKey: null, action: null };
-                    });
-                };
-
-                const handleTouchMove = (e) => {
-                    setDragSelection(prev => {
-                        if (!prev.isDragging) return prev;
-                        const touch = e.touches[0];
-                        const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                        if (el) {
-                            const key = el.getAttribute('data-slot');
-                            if (key && key !== prev.currentKey) {
-                                return { ...prev, currentKey: key };
-                            }
-                        }
-                        return prev;
-                    });
-                };
-
-                window.addEventListener('mouseup', handleMouseUp);
-                window.addEventListener('touchend', handleMouseUp);
-                window.addEventListener('touchmove', handleTouchMove, { passive: true });
-
-                return () => {
-                    window.removeEventListener('mouseup', handleMouseUp);
-                    window.removeEventListener('touchend', handleMouseUp);
-                    window.removeEventListener('touchmove', handleTouchMove);
-                };
-            }, [currentRange]);
-
-            const handleMouseDown = (key) => {
-                const action = mySlots.has(key) ? 'deselect' : 'select';
-                setDragSelection({ isDragging: true, startKey: key, currentKey: key, action });
-            };
-
-            const handleMouseEnter = (key) => {
-                setDragSelection(prev => {
-                    if (!prev.isDragging || prev.currentKey === key) return prev;
-                    return { ...prev, currentKey: key };
-                });
-            };
-            // SYNC-ZONE-END:APP_SHARED_STATE
-
-            const handleFinalSave = () => {
-                const next = { ...bookedSlots };
-                deleteSelection.forEach(k => delete next[k]);
-                newSelection.forEach(k => { next[k] = { court: selectedCourt, user: user.displayName }; });
-                setBookedSlots(next);
-                setIsSelectCourtModalOpen(false);
-                setIsManageModalOpen(false);
-                setNewSelection(new Set());
-                setDeleteSelection(new Set());
-            };
-
-            // SYNC-ZONE-START:APP_RENDER
             return (
-                <div className="min-h-screen p-4 md:p-6 relative">
-                    <div className={`grid grid-cols-1 gap-4 mx-auto items-start ${viewMode === 'horizontal' ? 'lg:grid-cols-12 max-w-[1600px]' : 'lg:grid-cols-12 max-w-[1400px]'}`}>
-
-                        {viewMode === 'horizontal' ? (
-                            <div className="order-2 lg:order-none lg:col-span-10 flex flex-col gap-5">
-                                <section className="card p-5 flex flex-col">
-                                    <SectionHeader title="1. Lịch cá nhân" colorClass="text-[#04BADE]" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>}>
-                                        <div className="flex items-center gap-2">
-                                            <FixedToggle fixed={fixed} onToggle={toggleFixed} />
-                                            <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ chọn tất cả các ca trong tuần đó!', onConfirm: handleSelectAll })} className="px-2.5 py-1 rounded-lg border border-[#04BADE]/30 bg-[#04BADE]/10 text-[#04BADE] text-[10px] font-semibold hover:bg-[#04BADE]/20 transition-all">Chọn tất cả</button>
-                                            <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ xoá toàn bộ lịch đã chọn đó!', onConfirm: handleClearAll })} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all">Bỏ chọn</button>
-                                        </div>
-                                    </SectionHeader>
-                                    <TimeGridHorizontal innerRef={grid1Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
-                                        const key = `${day}-${time}`;
-                                        const isHovered = currentRange.has(key);
-                                        let sel = mySlots.has(key);
-                                        if (isHovered) sel = dragSelection.action === 'select';
-                                        return (
-                                            <button key={key} data-slot={key} onMouseDown={(e) => { e.preventDefault(); handleMouseDown(key); }} onMouseEnter={() => handleMouseEnter(key)} onTouchStart={() => handleMouseDown(key)}
-                                                className={`w-full rounded-xl border h-9 flex items-center justify-center transition-all duration-150 ${sel ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40'} ${isHovered ? 'ring-2 ring-[#04BADE]/50 z-10' : ''}`}>
-                                                {sel && <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>}
-                                            </button>
-                                        );
-                                    }} />
-                                </section>
-
-                                <section className="card p-5 flex flex-col">
-                                    <SectionHeader title="2. Lịch tổng kết" colorClass="text-rose-400" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>}>
-                                        <button
-                                            onClick={() => setIsMemberListModalOpen(true)}
-                                            className="text-[10px] text-gray-400 font-bold bg-gray-50 hover:bg-gray-100 border border-gray-100 px-2 py-1 rounded-lg transition-all shadow-sm"
-                                        >
-                                            {allSchedules.length} thành viên
-                                        </button>
-                                    </SectionHeader>
-                                    <TimeGridHorizontal innerRef={grid2Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
-                                        const key = `${day}-${time}`;
-                                        const count = heatmap[key] || 0;
-                                        const c = heatColor(count);
-                                        const isActive = activeSlot === key;
-                                        const info = bookedSlots[key];
-                                        const isSelected = mySlots.has(key);
-                                        return (
-                                            <button key={key} onClick={() => setActiveSlot(isActive ? null : key)} style={{ background: c.bg, color: c.text, borderColor: isActive ? '#6366f1' : c.border, outline: isActive ? '2px solid #c7d2fe' : 'none', outlineOffset: '1px' }} className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all hover:brightness-95">
-                                                {count > 0 ? count : ''}
-                                                {info && <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm" title={`${info.court} - ${info.user}`}>🏸</span>}
-                                                {isSelected && <div className="absolute top-0.5 right-0.5 text-[#04BADE] drop-shadow-sm" title="Ca bạn đã chọn"><svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg></div>}
-                                            </button>
-                                        );
-                                    }} />
-                                </section>
-                            </div>
-                        ) : (
-                            <React.Fragment>
-                                <section className="order-2 lg:order-none lg:col-span-5 card p-5 flex flex-col h-auto lg:h-[calc(100vh-48px)]">
-                                    <SectionHeader title="1. Lịch cá nhân" colorClass="text-[#04BADE]" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>}>
-                                        <div className="flex items-center gap-2">
-                                            <FixedToggle fixed={fixed} onToggle={() => { setFixed(!fixed); setSyncing(true); setTimeout(() => setSyncing(false), 500); }} />
-                                            <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ chọn tất cả các ca trong tuần đó!', onConfirm: () => { const all = new Set(); DAYS.forEach(d => TIMES.forEach(t => all.add(`${d}-${t}`))); setMySlots(all); setModalConfig(null); } })} className="px-2.5 py-1 rounded-lg border border-[#04BADE]/30 bg-[#04BADE]/10 text-[#04BADE] text-[10px] font-semibold hover:bg-[#04BADE]/20 transition-all">Chọn tất cả</button>
-                                            <button onClick={() => setModalConfig({ message: 'Mày chắc chưa? Sẽ xoá toàn bộ lịch đã chọn đó!', onConfirm: () => { setMySlots(new Set()); setModalConfig(null); } })} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all">Bỏ chọn</button>
-                                        </div>
-                                    </SectionHeader>
-                                    <TimeGridVertical innerRef={grid1Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
-                                        const key = `${day}-${time}`;
-                                        const isHovered = currentRange.has(key);
-                                        let sel = mySlots.has(key);
-                                        if (isHovered) sel = dragSelection.action === 'select';
-                                        return (
-                                            <button key={key} data-slot={key} onMouseDown={(e) => { e.preventDefault(); handleMouseDown(key); }} onMouseEnter={() => handleMouseEnter(key)} onTouchStart={() => handleMouseDown(key)}
-                                                className={`w-full rounded-xl border h-9 flex items-center justify-center transition-all duration-150 ${sel ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40'} ${isHovered ? 'ring-2 ring-[#04BADE]/50 z-10' : ''}`}>
-                                                {sel && <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>}
-                                            </button>
-                                        );
-                                    }} />
-                                </section>
-
-                                <section className="order-3 lg:order-none lg:col-span-5 card p-5 flex flex-col h-auto lg:h-[calc(100vh-48px)]">
-                                    <SectionHeader title="2. Lịch tổng kết" colorClass="text-rose-400" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>}>
-                                        <button
-                                            onClick={() => setIsMemberListModalOpen(true)}
-                                            className="text-[10px] text-gray-400 font-bold bg-gray-50 hover:bg-gray-100 border border-gray-100 px-2 py-1 rounded-lg transition-all shadow-sm"
-                                        >
-                                            {allSchedules.length} thành viên
-                                        </button>
-                                    </SectionHeader>
-                                    <TimeGridVertical innerRef={grid2Ref} days={DAYS} times={TIMES} renderCell={(day, time) => {
-                                        const key = `${day}-${time}`;
-                                        const count = heatmap[key] || 0;
-                                        const c = heatColor(count);
-                                        const isActive = activeSlot === key;
-                                        const info = bookedSlots[key];
-                                        const isSelected = mySlots.has(key);
-                                        return (
-                                            <button key={key} onClick={() => setActiveSlot(isActive ? null : key)} style={{ background: c.bg, color: c.text, borderColor: isActive ? '#6366f1' : c.border, outline: isActive ? '2px solid #c7d2fe' : 'none', outlineOffset: '1px' }} className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all hover:brightness-95">
-                                                {count > 0 ? count : ''}
-                                                {info && <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm" title={`${info.court} - ${info.user}`}>🏸</span>}
-                                                {isSelected && <div className="absolute top-0.5 right-0.5 text-[#04BADE] drop-shadow-sm" title="Ca bạn đã chọn"><svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg></div>}
-                                            </button>
-                                        );
-                                    }} />
-                                </section>
-                            </React.Fragment>
-                        )}
-
-                        <div className="order-1 lg:order-none lg:row-span-2 lg:sticky lg:top-4 flex flex-col gap-4 lg:h-[calc(100vh-48px)] lg:col-span-2">
-                            <SidebarTop syncing={syncing} idleSyncLabel={idleSyncLabel} user={user} logout={logout} onOpenManage={() => { setNewSelection(new Set()); setDeleteSelection(new Set()); setIsManageModalOpen(true); }} onOpenCourts={() => setIsCourtModalOpen(true)} viewMode={viewMode} setViewMode={setViewMode} />
-                            <div className="hidden lg:flex flex-col flex-1 min-h-0">
-                                <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
-                            </div>
-                        </div>
-                        <div className="order-4 lg:hidden">
-                            <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
-                        </div>
-
-                        {isManageModalOpen && <ManageBookingModal heatmap={heatmap} bookedSlots={bookedSlots} newSelection={newSelection} setNewSelection={setNewSelection} deleteSelection={deleteSelection} setDeleteSelection={setDeleteSelection} onClose={() => setIsManageModalOpen(false)} onSelectCourt={() => setIsSelectCourtModalOpen(true)} viewMode={viewMode} />}
-                        {isSelectCourtModalOpen && <SelectCourtModal newCount={newSelection.size} delCount={deleteSelection.size} selectedCourt={selectedCourt} setSelectedCourt={setSelectedCourt} onBack={() => setIsSelectCourtModalOpen(false)} onSave={handleFinalSave} />}
-                        {isCourtModalOpen && <CourtListModal onClose={() => setIsCourtModalOpen(false)} />}
-                        {isMemberListModalOpen && <MemberListModal members={allSchedules} onClose={() => setIsMemberListModalOpen(false)} />}
-                        {modalConfig && <ConfirmationModal config={modalConfig} onClose={() => setModalConfig(null)} />}
-
-                    </div>
-                </div>
+                <AppShell
+                    user={user}
+                    idleSyncLabel={idleSyncLabel}
+                    syncing={syncing}
+                    allSchedules={allSchedules}
+                    mySlots={mySlots}
+                    fixed={fixed}
+                    bookedSlots={bookedSlots}
+                    onLogout={() => alert('Logout mock')}
+                    onSaveSchedule={onSaveSchedule}
+                    onSaveBookings={onSaveBookings}
+                />
             );
-            // SYNC-ZONE-END:APP_RENDER
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+
+</html>
+nLogout={() => alert('Logout mock')}
+                    onSaveSchedule={onSaveSchedule}
+                    onSaveBookings={onSaveBookings}
+                />
+            );
         }
 
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
