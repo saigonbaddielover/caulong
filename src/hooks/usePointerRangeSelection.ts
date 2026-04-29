@@ -46,6 +46,8 @@ export const usePointerRangeSelection = ({
   useEffect(() => {
     const handleGlobalPointerUp = () => {
       const ts = touchStateRef.current;
+      
+      // Xử lý Quick Tap (thả ra trước 300ms)
       if (ts.timer) {
         clearTimeout(ts.timer);
         ts.timer = null;
@@ -55,9 +57,11 @@ export const usePointerRangeSelection = ({
           applyRangeRef.current(action, new Set([key]), meta);
         }
       }
+      
       ts.pendingTap = null;
       ts.startPos = null;
       
+      // Xử lý hoàn tất kéo (Drag)
       setDragSelection(prev => {
         if (prev.isDragging && prev.startKey && prev.currentKey && prev.action) {
           applyRangeRef.current(prev.action, buildSlotRange(prev.startKey, prev.currentKey), prev.meta);
@@ -74,6 +78,7 @@ export const usePointerRangeSelection = ({
       const ts = touchStateRef.current;
       
       if (!dragStateRef.current.isDragging) {
+        // Nếu đang trong trạng thái chờ tap mà di chuyển quá 10px -> hủy tap
         if (ts.startPos && ts.timer) {
           const dx = touch.clientX - ts.startPos.x;
           const dy = touch.clientY - ts.startPos.y;
@@ -86,6 +91,7 @@ export const usePointerRangeSelection = ({
         return;
       }
       
+      // Chặn scroll khi đang drag
       if (e.cancelable) e.preventDefault();
 
       setDragSelection(prev => {

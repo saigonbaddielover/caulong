@@ -66,18 +66,29 @@ export const ManageBookingModal: React.FC<ManageBookingModalProps> = ({
     dragSelection,
     currentRange,
     startSelection,
+    startTouchSelection,
     updateSelection
   } = usePointerRangeSelection({
     dataAttribute: 'data-slot-manage',
     onApplyRange: handleApplyRange,
   });
 
-  const handleMouseDown = (key: string, isBooked: boolean) => {
+  const getSelectionParams = (key: string, isBooked: boolean) => {
     const type = isBooked ? 'delete' : 'new';
-    const action = isBooked
+    const action = (isBooked
       ? (deleteSelection.has(key) ? 'deselect' : 'select')
-      : (newSelection.has(key) ? 'deselect' : 'select');
-    startSelection(key, action, { type });
+      : (newSelection.has(key) ? 'deselect' : 'select')) as 'select' | 'deselect';
+    return { action, meta: { type } };
+  };
+
+  const handleMouseDown = (key: string, isBooked: boolean) => {
+    const { action, meta } = getSelectionParams(key, isBooked);
+    startSelection(key, action, meta);
+  };
+
+  const handleTouchStart = (key: string, isBooked: boolean, e: React.TouchEvent) => {
+    const { action, meta } = getSelectionParams(key, isBooked);
+    startTouchSelection(key, action, e, meta);
   };
 
   const GridComp = viewMode === 'horizontal' ? TimeGridHorizontal : TimeGridVertical;
@@ -129,8 +140,9 @@ export const ManageBookingModal: React.FC<ManageBookingModalProps> = ({
                   data-slot-manage={key}
                   onMouseDown={(e) => { e.preventDefault(); handleMouseDown(key, isBooked); }}
                   onMouseEnter={() => updateSelection(key)}
-                  onTouchStart={(e) => { e.preventDefault(); handleMouseDown(key, isBooked); }}
-                  style={{ background: bg, color: text, borderColor: border }}
+                  onTouchStart={(e) => handleTouchStart(key, isBooked, e)}
+                  onContextMenu={(e) => { if (/Mobi|Android/i.test(navigator.userAgent)) e.preventDefault(); }}
+                  style={{ background: bg, color: text, borderColor: border, WebkitTouchCallout: 'none', userSelect: 'none' }}
                   className={`w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold relative transition-all shadow-sm hover:brightness-95 ${
                     isHovered ? (selectionType === 'delete' ? 'ring-2 ring-rose-500/50 z-10' : 'ring-2 ring-amber-500/50 z-10') : ''
                   }`}
