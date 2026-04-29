@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Rảnh 🏸</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏸</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDflvBvXYn0z1F5vuD5osLlpBFuIR_ngoE",
+            authDomain: "caulong-2974b.web.app",
+            projectId: "caulong-2974b",
+            storageBucket: "caulong-2974b.firebasestorage.app",
+            messagingSenderId: "450431128394",
+            appId: "1:450431128394:web:7c7b40628f90453a1327b3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        window.FB = {
+            auth, db, googleProvider,
+            doc, setDoc, onSnapshot, collection, query,
+            signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged,
+            setPersistence, browserLocalPersistence
+        };
+    </script>
+
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: #f0f2f5;
+            color: #1a1a2e;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            border: 1px solid #e8eaed;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.25s ease forwards;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // SYNC-ZONE-START:SHARED_CONSTANTS
+        // ── 1. CONSTANTS ──────────────────────────────────────────
+        const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        const HEAT_STEPS = [
+            { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
+            { bg: '#dcfce7', text: '#15803d', border: '#86efac' },
+            { bg: '#ecfccb', text: '#3f6212', border: '#bef264' },
+            { bg: '#fefce8', text: '#854d0e', border: '#fde047' },
+            { bg: '#fef08a', text: '#92400e', border: '#facc15' },
+            { bg: '#ffedd5', text: '#9a3412', border: '#fdba74' },
+            { bg: '#fb923c', text: '#fff', border: '#ea580c' },
+            { bg: '#ea580c', text: '#fff', border: '#c2410c' },
+        ];
+
+        const COURTS = [
+            { name: 'EZB Đằng Hải', phone: '0779766333', address: '84 Lũng Bắc' },
+            { name: 'EZB Cầu Niệm', phone: '0934275222', address: '22 Tân Hà' },
+            { name: 'EZB An Đồng', phone: '0369633444', address: '87 đường 302' },
+            { name: 'EZB Văn Cao', phone: '0914616818', address: '14/333B Văn Cao' },
+            { name: 'Phú Cường', phone: '0333766333', address: '135 Quán Trữ' },
+            { name: 'Hải Tiến', phone: '0906903555', address: 'lô 9 Lê Hồng Phong' },
+            { name: 'Giang Lakaika', phone: '0945433979', address: '50 An Trực' },
+            { name: 'TD', phone: '0971186416', address: '34/3B Lê Hồng Phong' },
+            { name: 'Phoenix 1', phone: '0976171250', address: 'Số 28, ngõ 739, Nguyễn Văn Linh' },
+            { name: 'Phoenix 2', phone: '0976171250', address: 'Ngõ Nguyễn Sơn Hà, 727 Nguyễn Văn Linh' },
+        ];
+
+        const TIMES = (() => {
+            const t = [];
+            for (let h = 8; h <= 21; h++) {
+                for (const m of ['00', '30']) {
+                    const val = h * 100 + parseInt(m);
+                    if (val >= 1200 && val <= 1330) continue;
+                    t.push(`${String(h).padStart(2, '0')}:${m}`);
+                }
+            }
+            return t;
+        })();
+
+        // SYNC-ZONE-END:SHARED_CONSTANTS
+
+        // SYNC-ZONE-START:SHARED_UTILS
+        // ── 2. UTILS ──────────────────────────────────────────────
+        const heatColor = (count) => {
+            if (!count) return { bg: '#f8f9fa', text: '#d1d5db', border: '#f0f0f0' };
+            return HEAT_STEPS[Math.min(count, 8) - 1];
+        };
+
+        const getTodayStr = () => {
+            const d = new Date();
+            const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+            const gmt7 = new Date(utc + (3600000 * 7));
+            return ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][gmt7.getDay()];
+        };
+
+        const buildSlotRange = (startKey, endKey) => {
+            if (!startKey || !endKey) return new Set();
+            const [startDay, startTime] = startKey.split('-');
+            const [endDay, endTime] = endKey.split('-');
+            const startX = DAYS.indexOf(startDay);
+            const startY = TIMES.indexOf(startTime);
+            const endX = DAYS.indexOf(endDay);
+            const endY = TIMES.indexOf(endTime);
+            const minX = Math.min(startX, endX);
+            const maxX = Math.max(startX, endX);
+            const minY = Math.min(startY, endY);
+            const maxY = Math.max(startY, endY);
+            const range = new Set();
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    range.add(`${DAYS[x]}-${TIMES[y]}`);
+                }
+            }
+
+            return range;
+        };
+
+        // SYNC-ZONE-END:SHARED_UTILS
+
+        // SYNC-ZONE-START:SHARED_COMPONENTS
+        // ── 3. UI COMPONENTS (PRIMITIVES) ──────────────────────────
+        const GoogleIcon = () => (
+            <svg width="18" height="18" viewBox="0 0 18 18">
+                <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z" />
+                <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.77-2.7.77-2.08 0-3.84-1.4-4.47-3.29H1.84v2.07A8 8 0 008.98 17z" />
+                <path fill="#FBBC05" d="M4.51 10.53A4.8 4.8 0 014.26 9c0-.53.09-1.04.25-1.53V5.4H1.84A8 8 0 001 9c0 1.29.31 2.5.84 3.6l2.67-2.07z" />
+                <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.84 5.4L4.5 7.47c.63-1.89 2.4-3.29 4.48-3.29z" />
+            </svg>
+        );
+
+        const SyncIcon = ({ spin }) => (
+            <svg className={`w-3 h-3 ${spin ? 'spin' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+            </svg>
+        );
+
+        const SectionHeader = ({ title, icon, colorClass, children }) => (
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 shrink-0">
+                <h2 className={`text-[11px] font-bold uppercase tracking-[0.15em] ${colorClass} flex items-center gap-1.5 whitespace-nowrap`}>
+                    {icon} {title}
+                </h2>
+                {children}
+            </div>
+        );
+
+        const FixedToggle = ({ fixed, onToggle }) => (
+            <div className="relative group">
+                <button onClick={onToggle} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-semibold transition-all duration-200 text-[#04BADE] ${fixed ? 'bg-[#04BADE]/10 border-[#04BADE]/30' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
+                    Cố định
+                    <span className={`w-6 h-3 rounded-full relative transition-colors duration-200 ${fixed ? 'bg-[#04BADE]' : 'bg-gray-300'}`}>
+                        <span className={`absolute top-0.5 w-2 h-2 rounded-full bg-white transition-all ${fixed ? 'left-3.5' : 'left-0.5'}`} />
+                    </span>
+                </button>
+                <div className="absolute right-0 top-full mt-1.5 w-56 bg-gray-900 text-white text-[10px] leading-relaxed rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
+                    Khi bật, lịch của bạn sẽ cố định hàng tuần và không bị tự động xoá sau mỗi ngày.
+                </div>
+            </div>
+        );
+
+        const DayTimeHeaderIcon = ({ path }) => (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d={path} />
+            </svg>
+        );
+
+        const SelectionActionButtons = ({ fixed, onToggleFixed, onSelectAll, onClearAll, clearLabel = 'Bỏ chọn' }) => (
+            <div className="flex items-center gap-2">
+                <FixedToggle fixed={fixed} onToggle={onToggleFixed} />
+                <button onClick={onSelectAll} className="px-2.5 py-1 rounded-lg border border-[#04BADE]/30 bg-[#04BADE]/10 text-[#04BADE] text-[10px] font-semibold hover:bg-[#04BADE]/20 transition-all">Chọn tất cả</button>
+                <button onClick={onClearAll} className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-semibold hover:bg-rose-100 transition-all">{clearLabel}</button>
+            </div>
+        );
+
+        // ── 4. SHARED LAYOUT COMPONENTS ──────────────────────────
+        const TimeGridVertical = ({ days, times, renderCell, innerRef }) => {
+            const todayStr = useMemo(getTodayStr, []);
+            const todayIndex = days.indexOf(todayStr);
+
+            return (
+                <div className="overflow-x-auto flex-1 flex flex-col min-h-0">
+                    <div ref={innerRef} className="flex-1 overflow-y-auto relative custom-scrollbar">
+                        <div className="sticky top-0 z-40 bg-white pt-3 pb-2 px-2 border-b border-gray-100">
+                            {todayIndex !== -1 && (
+                                <div className="absolute inset-0 pointer-events-none z-10 px-2" style={{ top: '1px', bottom: '-1px' }}>
+                                    <div className="grid h-full gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                                        <div />
+                                        {days.map((d, i) => (
+                                            <div key={d} className="relative h-full">
+                                                {i === todayIndex && (
+                                                    <div className="absolute top-0 bottom-0 border-[#04BADE] rounded-t-[10px]" style={{ left: '-3.75px', right: '-3.75px', borderTopWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px', borderBottomWidth: '0' }}></div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            <div className="grid gap-1.5 relative z-20 text-[10px] font-bold uppercase tracking-tight text-gray-400 py-1" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                                <div />
+                                {days.map((d, i) => <div key={d} className={`text-center ${i === todayIndex ? 'text-[#04BADE]' : ''}`}>{d}</div>)}
+                            </div>
+                        </div>
+                        <div className="relative pt-2 pb-4 px-2">
+                            <div className="relative">
+                                {todayIndex !== -1 && (
+                                    <div className="absolute inset-0 pointer-events-none z-20" style={{ top: '-16px', bottom: '-4px' }}>
+                                        <div className="grid h-full gap-1.5" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                                            <div />
+                                            {days.map((d, i) => (
+                                                <div key={d} className="relative h-full">
+                                                    {i === todayIndex && (
+                                                        <div className="absolute top-0 bottom-0 border-[#04BADE] rounded-b-[10px]" style={{ left: '-3.75px', right: '-3.75px', borderTopWidth: '0', borderLeftWidth: '1.5px', borderRightWidth: '1.5px', borderBottomWidth: '1.5px' }}></div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="space-y-1.5 relative z-10">
+                                    {times.map((time) => {
+                                        const isHour = time.endsWith(':00');
+                                        return (
+                                            <React.Fragment key={time}>
+                                                {(time === '14:00' || time === '18:00') && (
+                                                    <div className="flex items-center py-2 my-1 relative"><div className="w-[40px]"></div><div className="flex-1 border-t border-dashed border-indigo-200"></div></div>
+                                                )}
+                                                <div className="grid gap-1.5 relative" style={{ gridTemplateColumns: '40px repeat(7, 1fr)' }}>
+                                                    <div className={`flex items-center justify-end pr-2 text-right select-none ${isHour ? 'text-[10px] font-bold text-gray-500' : 'text-[9px] font-medium text-gray-400'}`}>{time}</div>
+                                                    {days.map(day => <div key={day} className="relative">{renderCell(day, time)}</div>)}
+                                                </div>
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const TimeGridHorizontal = ({ days, times, renderCell, innerRef }) => {
+            const todayStr = useMemo(getTodayStr, []);
+            const todayIndex = days.indexOf(todayStr);
+
+            const gridTemplate = useMemo(() => {
+                const cols = ['56px'];
+                times.forEach(t => {
+                    if (t === '14:00' || t === '18:00') cols.push('8px');
+                    cols.push('minmax(40px, 1fr)');
+                });
+                return cols.join(' ');
+            }, [times]);
+
+            return (
+                <div className="overflow-x-auto flex-1 flex flex-col min-h-0">
+                    <div ref={innerRef} className="flex-1 overflow-x-auto overflow-y-auto relative custom-scrollbar">
+                        <div className="sticky top-0 z-40 bg-white pt-3 pb-2 pr-2 pl-0 border-b border-gray-100 min-w-max">
+                            <div className="absolute top-0 bottom-0 left-0 right-0 pointer-events-none z-[50]">
+                                <div className="sticky left-0 w-[54px] h-full bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]" />
+                            </div>
+                            <div className="grid gap-1.5 relative z-20 py-1" style={{ gridTemplateColumns: gridTemplate }}>
+                                <div />
+                                {times.map((time, idx) => {
+                                    const isHour = time.endsWith(':00');
+                                    const sep = (time === '14:00' || time === '18:00') ? <div key={`sep-${idx}`} /> : null;
+                                    const col = (
+                                        <div key={time} className={`text-center ${isHour ? 'text-[10px] font-bold text-gray-500' : 'text-[9px] font-medium text-gray-400'} uppercase tracking-tight`}>
+                                            {time}
+                                        </div>
+                                    );
+                                    return sep ? [sep, col] : col;
+                                })}
+                            </div>
+                        </div>
+                        <div className="relative pt-2 pb-4 pr-2 pl-0 min-w-max">
+                            <div className="absolute top-0 bottom-0 left-0 right-0 pointer-events-none z-[30]">
+                                <div className="sticky left-0 w-[54px] h-full bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]" />
+                            </div>
+                            <div className="relative">
+                                <div className="space-y-1.5 relative">
+                                    {days.map((day, i) => {
+                                        return (
+                                            <div key={day} className="grid gap-1.5 relative" style={{ gridTemplateColumns: gridTemplate }}>
+                                                {i === todayIndex && (
+                                                    <React.Fragment>
+                                                        <div className="absolute pointer-events-none z-[10]" style={{ left: '0', width: '56px', top: '-2px', bottom: '-2px' }}>
+                                                            <div className="absolute inset-0 border-[#04BADE] rounded-l-[10px]" style={{ borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '0' }}></div>
+                                                        </div>
+                                                        <div className="absolute pointer-events-none z-[10]" style={{ left: '54px', right: '-4px', top: '-2px', bottom: '-2px' }}>
+                                                            <div className="absolute inset-0 border-[#04BADE] rounded-r-[10px]" style={{ borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderRightWidth: '1.5px', borderLeftWidth: '0' }}></div>
+                                                        </div>
+                                                    </React.Fragment>
+                                                )}
+                                                <div className={`sticky left-0 z-[40] w-[56px] flex items-center justify-end pr-2 text-right select-none text-[10px] font-bold ${day === todayStr ? 'text-[#04BADE]' : 'text-gray-500'}`}>
+                                                    <span className="relative z-10">{day}</span>
+                                                </div>
+                                                {times.map((time, idx) => {
+                                                    const sep = (time === '14:00' || time === '18:00') ? (
+                                                        <div key={`sep-${idx}`} className="flex justify-center items-center py-1">
+                                                            <div className="h-full border-l border-dashed border-indigo-200"></div>
+                                                        </div>
+                                                    ) : null;
+                                                    const col = (
+                                                        <div key={time} className="relative">
+                                                            {renderCell(day, time)}
+                                                        </div>
+                                                    );
+                                                    return sep ? [sep, col] : col;
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ── 5. MODAL COMPONENTS ──────────────────────────────────
+        const ManageBookingModal = ({ heatmap, bookedSlots, newSelection, setNewSelection, deleteSelection, setDeleteSelection, onClose, onSelectCourt, viewMode }) => {
+            const applyManageRange = (action, range, meta) => {
+                if (meta?.type === 'delete') {
+                    setDeleteSelection(old => {
+                        const next = new Set(old);
+                        range.forEach(key => {
+                            if (!bookedSlots[key]) return;
+                            if (action === 'select') next.add(key);
+                            else next.delete(key);
+                        });
+                        return next;
+                    });
+                    return;
+                }
+
+                setNewSelection(old => {
+                    const next = new Set(old);
+                    range.forEach(key => {
+                        if (bookedSlots[key]) return;
+                        if (action === 'select') next.add(key);
+                        else next.delete(key);
+                    });
+                    return next;
+                });
+            };
+
+            const { dragSelection, currentRange, startSelection, updateSelection } = usePointerRangeSelection({
+                dataAttribute: 'data-slot-manage',
+                onApplyRange: applyManageRange,
+            });
+
+            const handleMouseDown = (key, isBooked) => {
+                const type = isBooked ? 'delete' : 'new';
+                const action = isBooked
+                    ? (deleteSelection.has(key) ? 'deselect' : 'select')
+                    : (newSelection.has(key) ? 'deselect' : 'select');
+                startSelection(key, action, { type });
+            };
+
+            return (
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                <div className={`bg-white p-5 rounded-3xl w-full shadow-2xl flex flex-col h-[85dvh] ${viewMode === 'horizontal' ? 'max-w-5xl' : 'max-w-3xl'}`}>
+                    <div className="flex items-center justify-between mb-4 shrink-0">
+                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><span>🏸</span> Quản lý đặt sân</h3>
+                        <div className="flex gap-2">
+                            <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-[#04BADE] rounded-sm"></span><span className="text-[8px] font-bold uppercase text-gray-400">Đã chốt</span></div>
+                            <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-amber-400 rounded-sm"></span><span className="text-[8px] font-bold uppercase text-gray-400">Chọn mới</span></div>
+                            <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-rose-400 rounded-sm"></span><span className="text-[8px] font-bold uppercase text-gray-400">Sẽ xóa</span></div>
+                        </div>
+                    </div>
+                    <div className="flex-1 min-h-0 bg-gray-50 rounded-2xl border border-gray-100 p-2 flex flex-col">
+                        {(() => {
+                            const GridComp = viewMode === 'horizontal' ? TimeGridHorizontal : TimeGridVertical;
+                            return <GridComp days={DAYS} times={TIMES} renderCell={(day, time) => {
+                                const key = `${day}-${time}`;
+                                const count = heatmap[key] || 0;
+                                const isBooked = !!bookedSlots[key];
+                                
+                                const isHovered = currentRange.has(key);
+                                let isNew = newSelection.has(key);
+                                let isDel = deleteSelection.has(key);
+                                const selectionType = dragSelection.meta?.type;
+
+                                if (isHovered) {
+                                    if (selectionType === 'delete' && isBooked) {
+                                        isDel = dragSelection.action === 'select';
+                                    } else if (selectionType === 'new' && !isBooked) {
+                                        isNew = dragSelection.action === 'select';
+                                    }
+                                }
+
+                                let bg = '#fff', border = '#f3f4f6', text = '#d1d5db';
+                                if (isBooked && !isDel) { bg = '#04BADE'; border = '#03a6c7'; text = '#fff'; }
+                                else if (isDel) { bg = '#fb7185'; border = '#e11d48'; text = '#fff'; }
+                                else if (isNew) { bg = '#fbbf24'; border = '#f59e0b'; text = '#fff'; }
+                                else if (count > 0) { const c = heatColor(count); bg = c.bg; border = c.border; text = c.text; }
+
+                                return (
+                                    <button key={key} data-slot-manage={key} onMouseDown={(e) => { e.preventDefault(); handleMouseDown(key, isBooked); }} onMouseEnter={() => updateSelection(key)} onTouchStart={() => handleMouseDown(key, isBooked)}
+                                        style={{ background: bg, color: text, borderColor: border }} className={`w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold relative transition-all shadow-sm hover:brightness-95 ${isHovered ? (selectionType === 'delete' ? 'ring-2 ring-rose-500/50 z-10' : 'ring-2 ring-amber-500/50 z-10') : ''}`}>
+                                        {count > 0 ? count : ''}
+                                        {(isBooked || isNew) && !isDel && <span className="absolute bottom-0.5 right-0.5 text-[10px] pointer-events-none">🏸</span>}
+                                        {isDel && <span className="absolute inset-0 flex items-center justify-center text-white bg-rose-500/20 rounded-xl pointer-events-none">✕</span>}
+                                    </button>
+                                );
+                            }} />;
+                        })()}
+                    </div>
+                    <div className="flex gap-3 justify-end mt-4 shrink-0">
+                        <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition">Hủy</button>
+                        <button onClick={onSelectCourt} disabled={newSelection.size === 0 && deleteSelection.size === 0} className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg disabled:opacity-50">Tiếp tục</button>
+                    </div>
+                </div>
+            </div>
+            );
+        };
+
+        const SelectCourtModal = ({ newCount, delCount, selectedCourt, setSelectedCourt, onBack, onSave }) => (
+            <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[110] px-4 fade-in">
+                <div className="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
+                    <div className="text-center mb-6">
+                        <div className="w-14 h-14 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-800">Xác nhận thay đổi</h3>
+                    </div>
+                    <div className="space-y-3 mb-6">
+                        {newCount > 0 && (
+                            <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                                <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Thêm mới/Cập nhật {newCount} ca:</p>
+                                <select value={selectedCourt} onChange={(e) => setSelectedCourt(e.target.value)} className="w-full mt-2 p-2 bg-white border border-amber-200 rounded-lg text-[16px] font-bold outline-none focus:border-amber-400 transition-all">
+                                    {COURTS.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                </select>
+                            </div>
+                        )}
+                        {delCount > 0 && (
+                            <div className="p-3 bg-rose-50 rounded-xl border border-rose-100">
+                                <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Sẽ gỡ đặt sân cho {delCount} ca</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <button onClick={onBack} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 transition">Quay lại</button>
+                        <button onClick={onSave} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg shadow-cyan-500/20">Lưu thay đổi</button>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const CourtListModal = ({ onClose }) => (
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                <div className="bg-white p-6 rounded-3xl max-w-4xl w-full shadow-2xl flex flex-col max-h-[85dvh]">
+                    <div className="flex items-center justify-between mb-6 shrink-0">
+                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">📍 Danh sách sân</h3>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition"><svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    </div>
+                    <div className="flex-1 overflow-auto custom-scrollbar border border-gray-100 rounded-2xl bg-gray-50/50">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead className="bg-white sticky top-0 z-10 shadow-sm text-[10px] font-bold text-gray-400 uppercase">
+                                <tr><th className="p-4 w-12 text-center border-b">#</th><th className="p-4 border-b">Tên sân</th><th className="p-4 border-b">SĐT</th><th className="p-4 border-b">Địa chỉ</th></tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {COURTS.map((court, idx) => (
+                                    <tr key={idx} className="hover:bg-white transition-colors group">
+                                        <td className="p-4 font-bold text-gray-300 text-center">{idx + 1}</td>
+                                        <td className="p-4 font-bold text-[#04BADE]">{court.name}</td>
+                                        <td className="p-4 font-semibold text-gray-600 group-hover:text-emerald-500 transition-colors"><a href={`tel:${court.phone}`}>{court.phone}</a></td>
+                                        <td className="p-4 text-gray-500">{court.address}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="mt-6 text-center"><button onClick={onClose} className="px-8 py-3 rounded-2xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg">Đóng</button></div>
+                </div>
+            </div>
+        );
+
+        const ConfirmationModal = ({ config, onClose }) => (
+            <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                <div className="bg-white p-6 rounded-2xl max-w-xs w-full shadow-2xl text-center">
+                    <h3 className="text-lg font-bold mb-2 text-gray-800">Xác nhận</h3>
+                    <p className="text-sm text-gray-500 mb-6">{config.message}</p>
+                    <div className="flex gap-3 justify-center">
+                        <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 transition">Tao chưa</button>
+                        <button onClick={config.onConfirm} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition">Tao chắc</button>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const MemberListModal = ({ members, onClose }) => (
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 fade-in">
+                <div className="bg-white p-6 rounded-3xl max-w-md w-full shadow-2xl flex flex-col max-h-[80vh]">
+                    <div className="flex items-center justify-between mb-6 shrink-0">
+                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">👑 Danh sách thượng đế</h3>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition"><svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
+                        {members.map((m, idx) => (
+                            <div key={idx} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 border border-gray-100 hover:border-indigo-100 transition-all group">
+                                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center font-bold shadow-sm">
+                                    {m.photo ? <img src={m.photo} className="w-full h-full rounded-full object-cover" /> : m.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-gray-700 truncate">{m.name}</p>
+                                </div>
+                                <div className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">Active</div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-6 text-center"><button onClick={onClose} className="px-8 py-3 rounded-2xl text-xs font-bold text-white bg-[#04BADE] hover:bg-[#03a6c7] transition shadow-lg w-full">Đóng</button></div>
+                </div>
+            </div>
+        );
+
+        // ── 6. SIDEBAR COMPONENTS ────────────────────────────────
+        function LoginScreen({ onLogin, loading }) {
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #f0f2f5 0%, #e8edf5 100%)' }}>
+                    <div className="card p-10 max-w-sm w-full text-center shadow-lg">
+                        <div className="w-14 h-14 rounded-2xl mx-auto mb-6 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>
+                            <span className="text-2xl">📅</span>
+                        </div>
+                        <h1 className="text-2xl font-bold mb-1 tracking-tight">Lịch Rảnh</h1>
+                        <p className="text-sm text-gray-400 mb-8">Đăng nhập để tick lịch rảnh với nhóm</p>
+                        <button onClick={onLogin} disabled={loading} className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            {loading ? <span className="w-4 h-4 border-2 border-gray-300 border-t-indigo-500 rounded-full spin" /> : <GoogleIcon />}
+                            {loading ? 'Đang đăng nhập...' : 'Đăng nhập bằng Google'}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        const PersonalScheduleSection = ({
+            GridComponent,
+            innerRef,
+            fixed,
+            onToggleFixed,
+            onSelectAll,
+            onClearAll,
+            days,
+            times,
+            mySlots,
+            currentRange,
+            dragSelection,
+            onStartDrag,
+            onStartTouchDrag,
+            onContinueDrag,
+            sectionClassName = 'h-auto lg:h-[calc(100dvh-48px)]',
+        }) => (
+            <section className={`card p-5 flex flex-col ${sectionClassName}`}>
+                <SectionHeader
+                    title="1. Lịch cá nhân"
+                    colorClass="text-[#04BADE]"
+                    icon={<DayTimeHeaderIcon path="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" />}
+                >
+                    <SelectionActionButtons
+                        fixed={fixed}
+                        onToggleFixed={onToggleFixed}
+                        onSelectAll={onSelectAll}
+                        onClearAll={onClearAll}
+                    />
+                </SectionHeader>
+                <GridComponent innerRef={innerRef} days={days} times={times} renderCell={(day, time) => {
+                    const key = `${day}-${time}`;
+                    const isHovered = currentRange.has(key);
+                    let selected = mySlots.has(key);
+                    if (isHovered) selected = dragSelection.action === 'select';
+                    const dragAction = mySlots.has(key) ? 'deselect' : 'select';
+
+                    return (
+                        <button
+                            key={key}
+                            data-slot={key}
+                            onMouseDown={(e) => { e.preventDefault(); onStartDrag(key, dragAction); }}
+                            onMouseEnter={() => onContinueDrag(key)}
+                            onTouchStart={(e) => onStartTouchDrag(key, dragAction, e)}
+                            onContextMenu={(e) => { if (/Mobi|Android/i.test(navigator.userAgent)) e.preventDefault(); }}
+                            style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
+                            className={`w-full rounded-xl border h-9 flex items-center justify-center transition-all duration-150 ${selected ? 'bg-[#04BADE] border-[#03a6c7] text-white shadow-sm scale-[0.97]' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-[#04BADE]/40'} ${isHovered ? 'ring-2 ring-[#04BADE]/50 z-10' : ''}`}
+                        >
+                            {selected && <svg className="w-3 h-3 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>}
+                        </button>
+                    );
+                }} />
+            </section>
+        );
+
+        const SummaryScheduleSection = ({ GridComponent, innerRef, days, times, allSchedules, heatmap, bookedSlots, mySlots, activeSlot, setActiveSlot, onOpenMembers, sectionClassName = 'h-auto lg:h-[calc(100dvh-48px)]' }) => (
+            <section className={`card p-5 flex flex-col ${sectionClassName}`}>
+                <SectionHeader
+                    title="2. Lịch tổng kết"
+                    colorClass="text-rose-400"
+                    icon={<DayTimeHeaderIcon path="M17 21v-2a4 4 0 00-3-3.87M9 21v-2a4 4 0 01-4-4H5a4 4 0 01-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8M16 3.13a4 4 0 010 7.75M23 21v-2a4 4 0 00-3-3.87" />}
+                >
+                    <button onClick={onOpenMembers} className="text-[10px] text-gray-400 font-bold bg-gray-50 hover:bg-gray-100 border border-gray-100 px-2 py-1 rounded-lg transition-all shadow-sm">
+                        {allSchedules.length} thành viên
+                    </button>
+                </SectionHeader>
+                <GridComponent innerRef={innerRef} days={days} times={times} renderCell={(day, time) => {
+                    const key = `${day}-${time}`;
+                    const count = heatmap[key] || 0;
+                    const colors = heatColor(count);
+                    const isActive = activeSlot === key;
+                    const info = bookedSlots[key];
+                    const isSelected = mySlots.has(key);
+
+                    return (
+                        <button key={key} onClick={() => setActiveSlot(isActive ? null : key)} style={{ background: colors.bg, color: colors.text, borderColor: isActive ? '#6366f1' : colors.border, outline: isActive ? '2px solid #c7d2fe' : 'none', outlineOffset: '1px' }} className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all hover:brightness-95">
+                            {count > 0 ? count : ''}
+                            {info && <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none drop-shadow-sm pointer-events-none" title={`${info.court} - ${info.user}`}>🏸</span>}
+                            {isSelected && <div className="absolute top-0.5 right-0.5 text-[#04BADE] drop-shadow-sm pointer-events-none" title="Ca bạn đã chọn"><svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg></div>}
+                        </button>
+                    );
+                }} />
+            </section>
+        );
+
+        const SidebarTop = ({ syncing, idleSyncLabel, user, logout, onOpenManage, onOpenCourts, viewMode, setViewMode }) => (
+            <div className="card p-4 shrink-0 flex flex-col gap-4">
+                <div className="flex items-center justify-between flex-wrap gap-y-2">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs text-white shadow-sm">📅</div>
+                            <span className="font-bold text-sm tracking-tight">Lịch Rảnh</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase text-gray-300 pt-0.5">
+                            <SyncIcon spin={syncing} /> {syncing ? 'Saving' : idleSyncLabel}
+                        </div>
+                    </div>
+                    <button onClick={logout} className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase tracking-tighter transition-colors bg-gray-50 hover:bg-red-50 px-2 py-1 rounded-lg border border-gray-100 hover:border-red-100">Đăng xuất</button>
+                </div>
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
+                        {user?.photoURL
+                            ? <img src={user.photoURL} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                            : <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[11px] font-bold">{user?.displayName?.charAt(0) || 'U'}</div>
+                        }
+                        <span className="text-xs font-bold text-gray-700 truncate">{user?.displayName || 'Unknown user'}</span>
+                    </div>
+                    <div className="flex bg-gray-100 p-1 rounded-xl w-full">
+                        <button onClick={() => setViewMode('horizontal')} className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${viewMode === 'horizontal' ? 'bg-white text-[#04BADE] shadow-sm ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                            <span>Ngang</span>
+                        </button>
+                        <button onClick={() => setViewMode('vertical')} className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${viewMode === 'vertical' ? 'bg-white text-[#04BADE] shadow-sm ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 4v16M15 4v16" /></svg>
+                            <span>Dọc</span>
+                        </button>
+                    </div>
+                    <button onClick={onOpenManage} className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm">
+                        <span className="text-[14px]">🏸</span> Quản lý đặt sân
+                    </button>
+                    <button onClick={onOpenCourts} className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm">
+                        <span className="text-[14px]">📍</span> Danh sách sân
+                    </button>
+                </div>
+            </div>
+        );
+
+        const SidebarDetail = ({ activeSlot, bookedSlots, slotUsers }) => {
+            const info = bookedSlots[activeSlot];
+            return (
+                <div className="card p-5 flex flex-col flex-1 min-h-0">
+                    {!activeSlot ? (
+                        <div className="flex flex-col items-center justify-center py-14 text-gray-200 text-center flex-1">
+                            <p className="text-[9px] font-semibold uppercase tracking-widest">Chọn ô tổng hợp</p>
+                        </div>
+                    ) : (
+                        <div className="fade-in space-y-5 flex flex-col flex-1 min-h-0">
+                            {/* Phần 1: Thông tin sân */}
+                            <div className="shrink-0 space-y-3">
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900 pb-2 border-b border-gray-100">Thông tin sân</h2>
+                                <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2.5 shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs">📅</span>
+                                        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">
+                                            {activeSlot.replace('-', ' • ')}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start gap-2 pt-2 border-t border-gray-200/50">
+                                        <span className="text-xs">🏸</span>
+                                        {info ? (
+                                            <div>
+                                                <p className="text-[11px] font-bold text-emerald-700 leading-tight">{info.court}</p>
+                                                <p className="text-[9px] text-emerald-600/60 mt-0.5 italic">Người đặt: <b>{info.user}</b></p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-[11px] text-gray-400 italic">Trống</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Phần 2: Danh sách */}
+                            <div className="flex flex-col flex-1 min-h-0">
+                                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 shrink-0">
+                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Ai rảnh?</h2>
+                                </div>
+                                <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1 pb-1">
+                                    {(slotUsers[activeSlot] || []).length === 0 ? (
+                                        <p className="text-[10px] text-center py-8 text-gray-300 italic">Trống</p>
+                                    ) : (slotUsers[activeSlot] || []).map((u, i) => (
+                                        <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-indigo-100 transition-all">
+                                            {u.photo
+                                                ? <img src={u.photo} className="w-7 h-7 rounded-lg object-cover" />
+                                                : <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center text-[10px] font-bold">{u.name.charAt(0).toUpperCase()}</div>
+                                            }
+                                            <p className="text-[11px] font-semibold text-gray-500 truncate">{u.name}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const usePointerRangeSelection = ({ dataAttribute, onApplyRange }) => {
+            const [dragSelection, setDragSelection] = useState({ isDragging: false, startKey: null, currentKey: null, action: null, meta: null });
+            const applyRangeRef = useRef(onApplyRange);
+            const dragStateRef = useRef({ isDragging: false });
+            const touchStateRef = useRef({ timer: null, startPos: null, pendingTap: null });
+
+            useEffect(() => {
+                applyRangeRef.current = onApplyRange;
+            }, [onApplyRange]);
+
+            const currentRange = useMemo(
+                () => buildSlotRange(dragSelection.startKey, dragSelection.currentKey),
+                [dragSelection]
+            );
+
+            useEffect(() => {
+                const handleGlobalPointerUp = () => {
+                    const ts = touchStateRef.current;
+                    if (ts.timer) {
+                        clearTimeout(ts.timer);
+                        ts.timer = null;
+                        
+                        if (ts.pendingTap) {
+                            const { key, action, meta } = ts.pendingTap;
+                            applyRangeRef.current(action, new Set([key]), meta);
+                        }
+                    }
+                    ts.pendingTap = null;
+                    ts.startPos = null;
+                    
+                    setDragSelection(prev => {
+                        if (prev.isDragging && prev.startKey && prev.currentKey) {
+                            applyRangeRef.current(prev.action, buildSlotRange(prev.startKey, prev.currentKey), prev.meta);
+                        }
+                        dragStateRef.current.isDragging = false;
+                        document.body.style.touchAction = '';
+                        document.body.classList.remove('select-none');
+                        return { isDragging: false, startKey: null, currentKey: null, action: null, meta: null };
+                    });
+                };
+
+                const handleGlobalTouchMove = (e) => {
+                    const touch = e.touches[0];
+                    const ts = touchStateRef.current;
+                    
+                    if (!dragStateRef.current.isDragging) {
+                        if (ts.startPos && ts.timer) {
+                            const dx = touch.clientX - ts.startPos.x;
+                            const dy = touch.clientY - ts.startPos.y;
+                            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                                clearTimeout(ts.timer);
+                                ts.timer = null;
+                                ts.pendingTap = null;
+                            }
+                        }
+                        return;
+                    }
+                    
+                    if (e.cancelable) e.preventDefault();
+
+                    setDragSelection(prev => {
+                        if (!prev.isDragging) return prev;
+                        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                        if (!el) return prev;
+                        const targetEl = el.closest(`[${dataAttribute}]`);
+                        if (!targetEl) return prev;
+                        const key = targetEl.getAttribute(dataAttribute);
+                        if (!key || key === prev.currentKey) return prev;
+                        return { ...prev, currentKey: key };
+                    });
+                };
+
+                window.addEventListener('mouseup', handleGlobalPointerUp);
+                window.addEventListener('touchend', handleGlobalPointerUp);
+                window.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+
+                return () => {
+                    window.removeEventListener('mouseup', handleGlobalPointerUp);
+                    window.removeEventListener('touchend', handleGlobalPointerUp);
+                    window.removeEventListener('touchmove', handleGlobalTouchMove);
+                };
+            }, [dataAttribute]);
+
+            const startSelection = (key, action, meta = null) => {
+                dragStateRef.current.isDragging = true;
+                setDragSelection({ isDragging: true, startKey: key, currentKey: key, action, meta });
+            };
+            
+            const startTouchSelection = (key, action, e, meta = null) => {
+                const touch = e.touches[0];
+                const ts = touchStateRef.current;
+                ts.startPos = { x: touch.clientX, y: touch.clientY };
+                ts.pendingTap = { key, action, meta };
+                
+                if (ts.timer) clearTimeout(ts.timer);
+                
+                ts.timer = setTimeout(() => {
+                    ts.timer = null;
+                    ts.pendingTap = null;
+                    dragStateRef.current.isDragging = true;
+                    
+                    if (window.navigator && window.navigator.vibrate) {
+                        window.navigator.vibrate(50);
+                    }
+                    document.body.style.touchAction = 'none';
+                    document.body.classList.add('select-none');
+                    
+                    setDragSelection({ isDragging: true, startKey: key, currentKey: key, action, meta });
+                }, 300);
+            };
+
+            const updateSelection = (key) => {
+                setDragSelection(prev => {
+                    if (!prev.isDragging || prev.currentKey === key) return prev;
+                    return { ...prev, currentKey: key };
+                });
+            };
+
+            return { dragSelection, currentRange, startSelection, startTouchSelection, updateSelection };
+        };
+        // SYNC-ZONE-END:SHARED_COMPONENTS
+
+        // SYNC-ZONE-START:SHARED_SHELL
+        const buildAllSlotsSet = () => {
+            const all = new Set();
+            DAYS.forEach(day => TIMES.forEach(time => all.add(`${day}-${time}`)));
+            return all;
+        };
+
+        function AppShell({
+            user,
+            idleSyncLabel,
+            syncing,
+            allSchedules,
+            mySlots,
+            fixed,
+            bookedSlots,
+            onLogout,
+            onSaveSchedule,
+            onSaveBookings,
+        }) {
+            const [viewMode, setViewMode] = useState('horizontal');
+            const [activeSlot, setActiveSlot] = useState(null);
+            const [modalConfig, setModalConfig] = useState(null);
+            const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+            const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
+            const [isSelectCourtModalOpen, setIsSelectCourtModalOpen] = useState(false);
+            const [isMemberListModalOpen, setIsMemberListModalOpen] = useState(false);
+            const [newSelection, setNewSelection] = useState(new Set());
+            const [deleteSelection, setDeleteSelection] = useState(new Set());
+            const [selectedCourt, setSelectedCourt] = useState(COURTS[0].name);
+
+            const grid1Ref = useRef(null);
+            const grid2Ref = useRef(null);
+            const {
+                dragSelection,
+                currentRange,
+                startSelection: startSlotSelection,
+                updateSelection: updateSlotSelection,
+            } = usePointerRangeSelection({
+                dataAttribute: 'data-slot',
+                onApplyRange: (action, range) => {
+                    const nextSlots = new Set(mySlots);
+                    range.forEach(key => {
+                        if (action === 'select') nextSlots.add(key);
+                        else nextSlots.delete(key);
+                    });
+                    onSaveSchedule(nextSlots, fixed);
+                },
+            });
+
+            useEffect(() => {
+                const el1 = grid1Ref.current;
+                const el2 = grid2Ref.current;
+                if (!el1 || !el2) return;
+
+                let lock = false;
+                const onScroll1 = () => {
+                    if (lock) return;
+                    lock = true;
+                    el2.scrollTop = el1.scrollTop;
+                    el2.scrollLeft = el1.scrollLeft;
+                    window.requestAnimationFrame(() => { lock = false; });
+                };
+                const onScroll2 = () => {
+                    if (lock) return;
+                    lock = true;
+                    el1.scrollTop = el2.scrollTop;
+                    el1.scrollLeft = el2.scrollLeft;
+                    window.requestAnimationFrame(() => { lock = false; });
+                };
+
+                el1.addEventListener('scroll', onScroll1, { passive: true });
+                el2.addEventListener('scroll', onScroll2, { passive: true });
+
+                return () => {
+                    el1.removeEventListener('scroll', onScroll1);
+                    el2.removeEventListener('scroll', onScroll2);
+                };
+            }, [viewMode]);
+
+            const heatmap = useMemo(() => {
+                const map = {};
+                allSchedules.forEach(entry => entry.slots?.forEach(slot => { map[slot] = (map[slot] || 0) + 1; }));
+                return map;
+            }, [allSchedules]);
+
+            const slotUsers = useMemo(() => {
+                const map = {};
+                allSchedules.forEach(entry => entry.slots?.forEach(slot => {
+                    if (!map[slot]) map[slot] = [];
+                    map[slot].push({ name: entry.name, photo: entry.photo });
+                }));
+                return map;
+            }, [allSchedules]);
+
+            const openSelectAllConfirm = () => setModalConfig({
+                message: 'Mày chắc chưa? Sẽ chọn tất cả các ca trong tuần đó!',
+                onConfirm: () => {
+                    onSaveSchedule(buildAllSlotsSet(), fixed);
+                    setModalConfig(null);
+                },
+            });
+
+            const openClearAllConfirm = () => setModalConfig({
+                message: 'Mày chắc chưa? Sẽ xoá toàn bộ lịch đã chọn đó!',
+                onConfirm: () => {
+                    onSaveSchedule(new Set(), fixed);
+                    setModalConfig(null);
+                },
+            });
+
+            const openManageBooking = () => {
+                setNewSelection(new Set());
+                setDeleteSelection(new Set());
+                setIsManageModalOpen(true);
+            };
+
+            const handleToggleFixed = () => {
+                onSaveSchedule(new Set(mySlots), !fixed);
+            };
+
+            const handleFinalSave = () => {
+                onSaveBookings({
+                    newSelection,
+                    deleteSelection,
+                    selectedCourt,
+                });
+                setIsSelectCourtModalOpen(false);
+                setIsManageModalOpen(false);
+                setNewSelection(new Set());
+                setDeleteSelection(new Set());
+            };
+
+            const isHorizontalView = viewMode === 'horizontal';
+            const GridComponent = isHorizontalView ? TimeGridHorizontal : TimeGridVertical;
+            const contentGridClass = isHorizontalView ? 'lg:col-span-10 flex flex-col gap-5 lg:h-[calc(100dvh-48px)] min-h-0' : 'lg:col-span-5';
+            const scheduleSectionClassName = isHorizontalView ? 'flex-1 min-h-0' : 'h-auto lg:h-[calc(100dvh-48px)]';
+            const shellClassName = `grid grid-cols-1 gap-4 mx-auto ${isHorizontalView ? 'items-stretch lg:grid-cols-12 max-w-[1600px]' : 'items-start lg:grid-cols-12 max-w-[1400px]'}`;
+
+            return (
+                <div className="min-h-screen min-h-[100dvh] p-4 md:p-6 relative">
+                    <div className={shellClassName}>
+                        {isHorizontalView ? (
+                            <div className={`order-2 lg:order-none ${contentGridClass}`}>
+                                <PersonalScheduleSection
+                                    GridComponent={GridComponent}
+                                    innerRef={grid1Ref}
+                                    fixed={fixed}
+                                    onToggleFixed={handleToggleFixed}
+                                    onSelectAll={openSelectAllConfirm}
+                                    onClearAll={openClearAllConfirm}
+                                    days={DAYS}
+                                    times={TIMES}
+                                    mySlots={mySlots}
+                                    currentRange={currentRange}
+                                    dragSelection={dragSelection}
+                                    onStartDrag={startSlotSelection}
+                                    onContinueDrag={updateSlotSelection}
+                                    sectionClassName={scheduleSectionClassName}
+                                />
+                                <SummaryScheduleSection
+                                    GridComponent={GridComponent}
+                                    innerRef={grid2Ref}
+                                    days={DAYS}
+                                    times={TIMES}
+                                    allSchedules={allSchedules}
+                                    heatmap={heatmap}
+                                    bookedSlots={bookedSlots}
+                                    mySlots={mySlots}
+                                    activeSlot={activeSlot}
+                                    setActiveSlot={setActiveSlot}
+                                    onOpenMembers={() => setIsMemberListModalOpen(true)}
+                                    sectionClassName={scheduleSectionClassName}
+                                />
+                            </div>
+                        ) : (
+                            <React.Fragment>
+                                <div className={`order-2 lg:order-none ${contentGridClass}`}>
+                                    <PersonalScheduleSection
+                                        GridComponent={GridComponent}
+                                        innerRef={grid1Ref}
+                                        fixed={fixed}
+                                        onToggleFixed={handleToggleFixed}
+                                        onSelectAll={openSelectAllConfirm}
+                                        onClearAll={openClearAllConfirm}
+                                        days={DAYS}
+                                        times={TIMES}
+                                        mySlots={mySlots}
+                                        currentRange={currentRange}
+                                        dragSelection={dragSelection}
+                                        onStartDrag={startSlotSelection}
+                                        onContinueDrag={updateSlotSelection}
+                                        sectionClassName={scheduleSectionClassName}
+                                    />
+                                </div>
+                                <div className="order-3 lg:order-none lg:col-span-5">
+                                    <SummaryScheduleSection
+                                        GridComponent={GridComponent}
+                                        innerRef={grid2Ref}
+                                        days={DAYS}
+                                        times={TIMES}
+                                        allSchedules={allSchedules}
+                                        heatmap={heatmap}
+                                        bookedSlots={bookedSlots}
+                                        mySlots={mySlots}
+                                        activeSlot={activeSlot}
+                                        setActiveSlot={setActiveSlot}
+                                        onOpenMembers={() => setIsMemberListModalOpen(true)}
+                                        sectionClassName={scheduleSectionClassName}
+                                    />
+                                </div>
+                            </React.Fragment>
+                        )}
+
+                        <div className="order-1 lg:order-none lg:row-span-2 lg:sticky lg:top-4 flex flex-col gap-4 min-h-0 lg:h-[calc(100dvh-48px)] lg:col-span-2">
+                            <SidebarTop syncing={syncing} idleSyncLabel={idleSyncLabel} user={user} logout={onLogout} onOpenManage={openManageBooking} onOpenCourts={() => setIsCourtModalOpen(true)} viewMode={viewMode} setViewMode={setViewMode} />
+                            <div className="hidden lg:flex flex-col flex-1 min-h-0">
+                                <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
+                            </div>
+                        </div>
+                        
+                        {/* Mobile Bottom Sheet for Detail */}
+                        <div className={`lg:hidden fixed inset-0 z-[120] transition-opacity duration-300 ${activeSlot ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                            <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setActiveSlot(null)}></div>
+                            <div className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 transform ${activeSlot ? 'translate-y-0' : 'translate-y-full'} flex flex-col`} style={{ maxHeight: '85dvh' }}>
+                                <div className="flex justify-center pt-3 pb-2 w-full active:bg-gray-50 rounded-t-3xl" onClick={() => setActiveSlot(null)}>
+                                    <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+                                </div>
+                                <div className="p-4 pt-0 flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
+                                    <SidebarDetail activeSlot={activeSlot} bookedSlots={bookedSlots} slotUsers={slotUsers} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {isManageModalOpen && <ManageBookingModal heatmap={heatmap} bookedSlots={bookedSlots} newSelection={newSelection} setNewSelection={setNewSelection} deleteSelection={deleteSelection} setDeleteSelection={setDeleteSelection} onClose={() => setIsManageModalOpen(false)} onSelectCourt={() => setIsSelectCourtModalOpen(true)} viewMode={viewMode} />}
+                        {isSelectCourtModalOpen && <SelectCourtModal newCount={newSelection.size} delCount={deleteSelection.size} selectedCourt={selectedCourt} setSelectedCourt={setSelectedCourt} onBack={() => setIsSelectCourtModalOpen(false)} onSave={handleFinalSave} />}
+                        {isCourtModalOpen && <CourtListModal onClose={() => setIsCourtModalOpen(false)} />}
+                        {isMemberListModalOpen && <MemberListModal members={allSchedules} onClose={() => setIsMemberListModalOpen(false)} />}
+                        {modalConfig && <ConfirmationModal config={modalConfig} onClose={() => setModalConfig(null)} />}
+
+                    </div>
+                </div>
+            );
+        }
+        // SYNC-ZONE-END:SHARED_SHELL
+
+        function EmbeddedBrowserBlockedScreen({ blockedContext, onOpenInChrome, onOpenInExternalBrowser, onCopyLink, copyFeedback }) {
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #f0f2f5 0%, #e8edf5 100%)' }}>
+                    <div className="card p-10 max-w-sm w-full text-center shadow-lg">
+                        <div className="w-14 h-14 rounded-2xl mx-auto mb-6 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>
+                            <span className="text-2xl">📅</span>
+                        </div>
+                        <h1 className="text-2xl font-bold mb-1 tracking-tight">Lịch Rảnh</h1>
+                        <div className="text-left mt-6">
+                            <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                                <p className="text-sm font-semibold text-amber-900 mb-2">Google không cho đăng nhập trong {blockedContext.label}</p>
+                                <p className="text-xs leading-6 text-amber-800">
+                                    Link này đang mở trong trình duyệt nhúng của app chat. Mày cần mở bằng trình duyệt ngoài như Chrome hoặc Safari rồi mới đăng nhập được.
+                                </p>
+                            </div>
+                            <div className="space-y-3">
+                                <button onClick={onOpenInChrome} className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl bg-[#04BADE] text-white hover:bg-[#03a6c7] transition-all font-medium text-sm shadow-sm">
+                                    <GoogleIcon />
+                                    Mở bằng Chrome
+                                </button>
+                                <button onClick={onOpenInExternalBrowser} className="w-full px-5 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all font-medium text-sm">
+                                    Mở bằng trình duyệt ngoài
+                                </button>
+                                <button onClick={onCopyLink} className="w-full px-5 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all font-medium text-sm">
+                                    {copyFeedback || 'Sao chép link'}
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-gray-400 mt-5 leading-5">
+                                Nếu app không tự bật Chrome, bấm menu của {blockedContext.label} rồi chọn mở bằng browser ngoài.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const getEmbeddedBrowserContext = () => {
+            const ua = navigator.userAgent || '';
+            const rules = [
+                { pattern: /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i, label: 'Facebook' },
+                { pattern: /Messenger/i, label: 'Messenger' },
+                { pattern: /Instagram/i, label: 'Instagram' },
+                { pattern: /Line\//i, label: 'LINE' },
+                { pattern: /MicroMessenger/i, label: 'WeChat' },
+                { pattern: /Zalo/i, label: 'Zalo' },
+                { pattern: /TikTok/i, label: 'TikTok' },
+            ];
+
+            const matched = rules.find(rule => rule.pattern.test(ua));
+            if (matched) return { isEmbedded: true, label: matched.label };
+
+            const isAndroidWebView = /; wv\)/i.test(ua) || /\bVersion\/[\d.]+ Chrome\/[\d.]+ Mobile\b/i.test(ua);
+            if (isAndroidWebView) return { isEmbedded: true, label: 'trình duyệt nhúng' };
+
+            return { isEmbedded: false, label: null };
+        };
+
+        const openCurrentUrlInChrome = () => {
+            const currentUrl = window.location.href;
+            const encodedUrl = encodeURIComponent(currentUrl);
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const isAndroid = /Android/i.test(navigator.userAgent);
+
+            if (isIOS) {
+                if (currentUrl.startsWith('https://')) {
+                    window.location.href = `googlechromes://${currentUrl.slice('https://'.length)}`;
+                    return;
+                }
+                if (currentUrl.startsWith('http://')) {
+                    window.location.href = `googlechrome://${currentUrl.slice('http://'.length)}`;
+                    return;
+                }
+            }
+
+            if (isAndroid) {
+                const url = new URL(currentUrl);
+                const intentUrl = `intent://${url.host}${url.pathname}${url.search}${url.hash}#Intent;scheme=${url.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodedUrl};end`;
+                window.location.href = intentUrl;
+                return;
+            }
+
+            window.open(currentUrl, '_blank', 'noopener,noreferrer');
+        };
+
+        const openCurrentUrlInExternalBrowser = () => {
+            const currentUrl = window.location.href;
+            const isAndroid = /Android/i.test(navigator.userAgent);
+
+            if (isAndroid) {
+                const url = new URL(currentUrl);
+                const intentUrl = `intent://${url.host}${url.pathname}${url.search}${url.hash}#Intent;scheme=${url.protocol.replace(':', '')};S.browser_fallback_url=${encodeURIComponent(currentUrl)};end`;
+                window.location.href = intentUrl;
+                return;
+            }
+
+            window.open(currentUrl, '_blank', 'noopener,noreferrer');
+        };
+
+        // ── 5. MAIN APP ──────────────────────────────────────────
+        function App() {
+            const [user, setUser] = useState(undefined);
+            const [authInitializing, setAuthInitializing] = useState(true);
+            const [loginLoading, setLoginLoading] = useState(false);
+            const [copyFeedback, setCopyFeedback] = useState('');
+            const [authBlockedContext, setAuthBlockedContext] = useState(() => getEmbeddedBrowserContext());
+            const [allSchedules, setAllSchedules] = useState([]);
+            const [mySlots, setMySlots] = useState(new Set());
+            const [fixed, setFixed] = useState(false);
+            const [syncing, setSyncing] = useState(false);
+            const [bookedSlots, setBookedSlots] = useState({});
+
+            const idleSyncLabel = 'Saved';
+
+            useEffect(() => {
+                const { auth, onAuthStateChanged, getRedirectResult, setPersistence, browserLocalPersistence } = window.FB;
+
+                const initAuth = async () => {
+                    try {
+                        await setPersistence(auth, browserLocalPersistence);
+                        await getRedirectResult(auth);
+                    } catch (e) {
+                        console.error('Auth Init Error:', e);
+                    } finally {
+                        setAuthInitializing(false);
+                    }
+                };
+
+                initAuth();
+                const unsub = onAuthStateChanged(auth, u => {
+                    setUser(u ?? null);
+                });
+                return unsub;
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                const { db, collection, onSnapshot, query, doc } = window.FB;
+                const q = query(collection(db, 'schedules'));
+                const unsubSchedules = onSnapshot(q, snap => {
+                    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAllSchedules(docs);
+                    const mine = docs.find(d => d.id === user.uid);
+                    setMySlots(new Set(mine?.slots || []));
+                    setFixed(!!mine?.fixed);
+                });
+                const unsubBooking = onSnapshot(doc(db, 'court', 'global'), d => {
+                    if (d.exists() && d.data().slots) setBookedSlots(d.data().slots);
+                    else setBookedSlots({});
+                });
+                return () => { unsubSchedules(); unsubBooking(); };
+            }, [user]);
+
+            const login = async () => {
+                if (authBlockedContext.isEmbedded) return;
+                setLoginLoading(true);
+                try {
+                    const { auth, googleProvider, signInWithPopup, signInWithRedirect } = window.FB;
+                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                    if (isMobile) {
+                        await signInWithRedirect(auth, googleProvider);
+                    } else {
+                        await signInWithPopup(auth, googleProvider);
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
+                        try {
+                            const { auth, googleProvider, signInWithRedirect } = window.FB;
+                            await signInWithRedirect(auth, googleProvider);
+                        } catch (e2) {
+                            console.error(e2);
+                            if (e2.code === 'auth/disallowed-user-agent' || e2.code === 'auth/operation-not-supported-in-this-environment') {
+                                const embeddedContext = getEmbeddedBrowserContext();
+                                setAuthBlockedContext(embeddedContext.isEmbedded ? embeddedContext : { isEmbedded: true, label: 'trình duyệt hiện tại' });
+                            }
+                        }
+                    } else if (e.code === 'auth/disallowed-user-agent' || e.code === 'auth/operation-not-supported-in-this-environment') {
+                        const embeddedContext = getEmbeddedBrowserContext();
+                        setAuthBlockedContext(embeddedContext.isEmbedded ? embeddedContext : { isEmbedded: true, label: 'trình duyệt hiện tại' });
+                    }
+                } finally {
+                    setLoginLoading(false);
+                }
+            };
+
+            const copyCurrentUrl = async () => {
+                try {
+                    await navigator.clipboard.writeText(window.location.href);
+                    setCopyFeedback('Đã sao chép link');
+                } catch (e) {
+                    console.error('Copy failed', e);
+                    setCopyFeedback('Không copy được, tự copy URL giúp tao');
+                }
+                window.setTimeout(() => setCopyFeedback(''), 2500);
+            };
+
+            const logout = async () => {
+                const { auth, signOut } = window.FB;
+                await signOut(auth);
+                setUser(null);
+                setMySlots(new Set());
+                setAllSchedules([]);
+                setBookedSlots({});
+            };
+
+            const save = async (slots, fixedVal) => {
+                const { db, doc, setDoc } = window.FB;
+                await setDoc(doc(db, 'schedules', user.uid), {
+                    slots: [...slots],
+                    fixed: fixedVal,
+                    name: user.displayName,
+                    photo: user.photoURL,
+                    updatedAt: Date.now()
+                });
+            };
+
+            const saveBooking = async (slotsObj) => {
+                const { db, doc, setDoc } = window.FB;
+                await setDoc(doc(db, 'court', 'global'), { slots: slotsObj });
+            };
+
+            const onSaveSchedule = async (nextSlots, nextFixed) => {
+                if (!user) return;
+                setMySlots(new Set(nextSlots));
+                setFixed(nextFixed);
+                setSyncing(true);
+                try {
+                    await save(nextSlots, nextFixed);
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    setSyncing(false);
+                }
+            };
+
+            const onSaveBookings = async ({ newSelection, deleteSelection, selectedCourt }) => {
+                if (!user) return;
+                const next = { ...bookedSlots };
+                deleteSelection.forEach(key => delete next[key]);
+                newSelection.forEach(key => {
+                    next[key] = { court: selectedCourt, user: user.displayName };
+                });
+                setBookedSlots(next);
+                setSyncing(true);
+                try {
+                    await saveBooking(next);
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    setSyncing(false);
+                }
+            };
+
+            if (user === undefined || authInitializing) return (
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="w-7 h-7 border-2 border-gray-200 border-t-[#04BADE] rounded-full spin" />
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Đang kiểm tra đăng nhập...</p>
+                    </div>
+                </div>
+            );
+
+            if (!user && authBlockedContext.isEmbedded) return (
+                <EmbeddedBrowserBlockedScreen
+                    blockedContext={authBlockedContext}
+                    onOpenInChrome={openCurrentUrlInChrome}
+                    onOpenInExternalBrowser={openCurrentUrlInExternalBrowser}
+                    onCopyLink={copyCurrentUrl}
+                    copyFeedback={copyFeedback}
+                />
+            );
+
+            if (!user) return <LoginScreen onLogin={login} loading={loginLoading} />;
+
+            return (
+                <AppShell
+                    user={user}
+                    idleSyncLabel={idleSyncLabel}
+                    syncing={syncing}
+                    allSchedules={allSchedules}
+                    mySlots={mySlots}
+                    fixed={fixed}
+                    bookedSlots={bookedSlots}
+                    onLogout={logout}
+                    onSaveSchedule={onSaveSchedule}
+                    onSaveBookings={onSaveBookings}
+                />
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+
+</html>
