@@ -106,7 +106,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           <SidebarTop
             user={user}
             idleSyncLabel="Saved"
-            onLogout={onLogout}
+            onLogout={() => setModalConfig({ 
+              message: 'mày chắc chưa?', 
+              onConfirm: () => {
+                onLogout();
+                setModalConfig(null);
+              } 
+            })}
             onOpenManage={() => setIsManageModalOpen(true)}
             onOpenCourts={() => setIsCourtModalOpen(true)}
             viewMode={viewMode}
