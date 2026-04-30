@@ -44,7 +44,7 @@ export const SidebarTop: React.FC<SidebarTopProps> = ({
 
   return (
     <div className="card p-4 shrink-0 flex flex-col gap-4">
-      <div className="flex items-center justify-between flex-wrap gap-y-2">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs text-white shadow-sm">
@@ -57,41 +57,38 @@ export const SidebarTop: React.FC<SidebarTopProps> = ({
             {syncing ? 'Saving' : idleSyncLabel}
           </div>
         </div>
-        <div className="flex flex-col items-end opacity-50 select-none pointer-events-none pt-0.5">
-          <span className="text-[9px] font-medium text-gray-400 lowercase tracking-wider">
-            v{__APP_VERSION__}
-          </span>
-          <div className="flex items-center gap-1">
-            <GitHub className="w-2.5 h-2.5 text-gray-400" />
-            <span className="text-[9px] font-medium text-gray-400 lowercase tracking-wider">
-              saigonbaddielover
-            </span>
-          </div>
-        </div>
       </div>
+      
       <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100 shadow-inner">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-2xl bg-white border border-gray-100 shadow-md ring-1 ring-black/5">
+          <div className="flex items-center gap-2.5 min-w-0">
             {user.photoURL ? (
-              <img src={user.photoURL} className="w-7 h-7 rounded-full object-cover border border-white" referrerPolicy="no-referrer" />
+              <div className="relative">
+                <img src={user.photoURL} className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm" referrerPolicy="no-referrer" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
+              </div>
             ) : (
-              <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[11px] font-bold">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
                 {user.displayName?.charAt(0) || 'U'}
               </div>
             )}
-            <span className="text-xs font-bold text-gray-700 truncate">{user.displayName}</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] font-bold text-gray-800 truncate leading-tight">{user.displayName}</span>
+              <span className="text-[9px] font-medium text-gray-400">Thành viên</span>
+            </div>
           </div>
           <button
             onClick={onLogout}
-            className="shrink-0 text-[9px] text-gray-400 hover:text-red-500 font-bold uppercase tracking-tighter transition-colors bg-white hover:bg-red-50 px-2 py-1 rounded-lg border border-gray-100 hover:border-red-100 shadow-sm active:scale-95"
+            className="shrink-0 text-[9px] text-gray-500 hover:text-red-500 font-bold uppercase tracking-tight transition-all bg-gray-50 hover:bg-red-50 px-2.5 py-1.5 rounded-xl border border-gray-100 hover:border-red-100 shadow-sm active:scale-95"
           >
             Đăng xuất
           </button>
         </div>
-        <div className="flex bg-gray-100 p-1 rounded-xl w-full shadow-inner">
+
+        <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner ring-1 ring-black/5">
           <button
             onClick={() => setViewMode('horizontal')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${
               viewMode === 'horizontal' ? 'bg-white text-[#04BADE] shadow-sm ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
@@ -100,7 +97,7 @@ export const SidebarTop: React.FC<SidebarTopProps> = ({
           </button>
           <button
             onClick={() => setViewMode('vertical')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${
               viewMode === 'vertical' ? 'bg-white text-[#04BADE] shadow-sm ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
@@ -108,6 +105,7 @@ export const SidebarTop: React.FC<SidebarTopProps> = ({
             <span>Dọc</span>
           </button>
         </div>
+
         <button
           onClick={onOpenManage}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm active:scale-95"
@@ -120,6 +118,18 @@ export const SidebarTop: React.FC<SidebarTopProps> = ({
         >
           <MapPin className="w-3.5 h-3.5" /> Danh sách sân
         </button>
+      </div>
+
+      <div className="pt-2 flex flex-col items-center gap-0.5 opacity-40 select-none border-t border-gray-100/50">
+        <span className="text-[9px] font-medium text-gray-400 lowercase tracking-wider">
+          v{__APP_VERSION__}
+        </span>
+        <div className="flex items-center gap-1">
+          <GitHub className="w-2.5 h-2.5 text-gray-400" />
+          <span className="text-[9px] font-medium text-gray-400 lowercase tracking-wider">
+            saigonbaddielover
+          </span>
+        </div>
       </div>
     </div>
   );

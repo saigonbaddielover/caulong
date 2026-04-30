@@ -64,7 +64,7 @@ export const SummaryScheduleSection: React.FC<SummaryScheduleSectionProps> = ({
                 background: colors.bg,
                 color: colors.text,
                 borderColor: isActive ? '#6366f1' : colors.border,
-                outline: isActive ? '2px solid #c7d2fe' : 'none',
+                outline: isActive ? '2px solid #6366f1' : 'none',
                 outlineOffset: '1px',
               }}
               className="relative w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold transition-all hover:brightness-95"

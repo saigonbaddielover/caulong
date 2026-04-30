@@ -76,10 +76,6 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "New version: $NewVersion" -ForegroundColor Cyan
 
-# Create version.json for client-side update detection
-$versionJson = @{ version = $NewVersion } | ConvertTo-Json
-$versionJson | Out-File -FilePath "public/version.json" -Encoding UTF8
-
 # Build project
 Write-Host "Building project..." -ForegroundColor Cyan
 npm run build

@@ -12,7 +12,7 @@ export const SidebarDetail: React.FC<SidebarDetailProps> = ({ activeSlot, slotUs
   const users = activeSlot ? (slotUsers[activeSlot] || []) : [];
 
   return (
-    <div className="card p-5 flex flex-col flex-1 min-h-0 bg-white border border-gray-100 rounded-[20px] shadow-sm overflow-hidden h-full">
+    <div className="card p-5 flex flex-col flex-1 min-h-0 overflow-hidden h-full">
       <div className="space-y-5 flex flex-col flex-1 min-h-0">
         {/* Section 1: Thông tin sân */}
         <div className="shrink-0 space-y-3">
