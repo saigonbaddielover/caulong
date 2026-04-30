@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useScheduleStore } from '../../store/useScheduleStore';
 import { DAYS, TIMES } from '../../constants/data';
 import { heatColor } from '../../utils/calendar';
@@ -26,6 +26,14 @@ export const ManageBookingModal: React.FC<ManageBookingModalProps> = ({
   viewMode,
 }) => {
   const { allSchedules, bookedSlots } = useScheduleStore();
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
 
   const heatmap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -94,8 +102,14 @@ export const ManageBookingModal: React.FC<ManageBookingModalProps> = ({
   const GridComp = viewMode === 'horizontal' ? TimeGridHorizontal : TimeGridVertical;
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 animate-in fade-in duration-200">
-      <div className={`bg-white p-5 rounded-3xl w-full shadow-2xl flex flex-col h-[85dvh] ${viewMode === 'horizontal' ? 'max-w-5xl' : 'max-w-3xl'}`}>
+    <div 
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] px-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div 
+        className={`bg-white p-5 rounded-3xl w-full shadow-2xl flex flex-col h-[85dvh] ${viewMode === 'horizontal' ? 'max-w-5xl' : 'max-w-3xl'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <span>🏸</span> Quản lý đặt sân
