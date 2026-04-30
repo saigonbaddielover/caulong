@@ -13,6 +13,8 @@ import { CourtListModal } from '../components/modals/CourtListModal';
 import { MemberListModal } from '../components/modals/MemberListModal';
 import { ConfirmationModal } from '../components/modals/ConfirmationModal';
 import { COURTS } from '../constants/data';
+import { useUpdateCheck } from '../hooks/useUpdateCheck';
+import { RefreshCw } from 'lucide-react';
 
 interface MainLayoutProps {
   user: User;
@@ -29,6 +31,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('horizontal');
   const { allSchedules, activeSlot, setActiveSlot } = useScheduleStore();
+  const { updateAvailable } = useUpdateCheck();
   
   const [modalConfig, setModalConfig] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -202,6 +205,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       {isCourtModalOpen && <CourtListModal onClose={() => setIsCourtModalOpen(false)} />}
       {isMemberListModalOpen && <MemberListModal members={allSchedules} onClose={() => setIsMemberListModalOpen(false)} />}
       {modalConfig && <ConfirmationModal config={modalConfig} onClose={() => setModalConfig(null)} />}
+
+      {/* Nút cập nhật nổi */}
+      {updateAvailable && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom duration-300">
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-amber-500 text-white rounded-full text-sm font-bold shadow-2xl flex items-center gap-2 hover:bg-amber-600 transition-all scale-105 hover:scale-110 active:scale-95 ring-4 ring-amber-500/20"
+          >
+            <RefreshCw className="w-4 h-4" /> Có bản cập nhật mới! Ấn để tải lại
+          </button>
+        </div>
+      )}
     </div>
   );
 };

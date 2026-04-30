@@ -81,23 +81,6 @@ export const ManageBookingModal: React.FC<ManageBookingModalProps> = ({
     onApplyRange: handleApplyRange,
   });
 
-  const getSelectionParams = (key: string, isBooked: boolean) => {
-    const type = isBooked ? 'delete' : 'new';
-    const action = (isBooked
-      ? (deleteSelection.has(key) ? 'deselect' : 'select')
-      : (newSelection.has(key) ? 'deselect' : 'select')) as 'select' | 'deselect';
-    return { action, meta: { type } };
-  };
-
-  const handleMouseDown = (key: string, isBooked: boolean) => {
-    const { action, meta } = getSelectionParams(key, isBooked);
-    startSelection(key, action, meta);
-  };
-
-  const handleTouchStart = (key: string, isBooked: boolean, e: React.TouchEvent) => {
-    const { action, meta } = getSelectionParams(key, isBooked);
-    startTouchSelection(key, action, e, meta);
-  };
 
   const GridComp = viewMode === 'horizontal' ? TimeGridHorizontal : TimeGridVertical;
 
@@ -130,10 +113,12 @@ export const ManageBookingModal: React.FC<ManageBookingModalProps> = ({
               const isBooked = !!bookedSlots[key];
               
               const isHovered = currentRange.has(key);
-              let isNew = newSelection.has(key);
-              let isDel = deleteSelection.has(key);
               const selectionType = dragSelection.meta?.type;
 
+              let isNew = newSelection.has(key);
+              let isDel = deleteSelection.has(key);
+
+              // Apply hover override logic similar to PersonalScheduleSection
               if (isHovered) {
                 if (selectionType === 'delete' && isBooked) {
                   isDel = dragSelection.action === 'select';
@@ -142,23 +127,32 @@ export const ManageBookingModal: React.FC<ManageBookingModalProps> = ({
                 }
               }
 
+              // Determine visual state
               let bg = '#fff', border = '#f3f4f6', text = '#d1d5db';
               if (isBooked && !isDel) { bg = '#04BADE'; border = '#03a6c7'; text = '#fff'; }
               else if (isDel) { bg = '#fb7185'; border = '#e11d48'; text = '#fff'; }
               else if (isNew) { bg = '#fbbf24'; border = '#f59e0b'; text = '#fff'; }
               else if (count > 0) { const c = heatColor(count); bg = c.bg; border = c.border; text = c.text; }
 
+              // Calculate action for this specific cell if user were to start a drag here
+              const currentAction = isBooked 
+                ? (deleteSelection.has(key) ? 'deselect' : 'select')
+                : (newSelection.has(key) ? 'deselect' : 'select');
+              const currentMeta = { type: isBooked ? 'delete' : 'new' };
+
               return (
                 <button
                   key={key}
                   data-slot-manage={key}
-                  onMouseDown={(e) => { e.preventDefault(); handleMouseDown(key, isBooked); }}
+                  onMouseDown={(e) => { e.preventDefault(); startSelection(key, currentAction, currentMeta); }}
                   onMouseEnter={() => updateSelection(key)}
-                  onTouchStart={(e) => handleTouchStart(key, isBooked, e)}
+                  onTouchStart={(e) => startTouchSelection(key, currentAction, e, currentMeta)}
                   onContextMenu={(e) => { if (/Mobi|Android/i.test(navigator.userAgent)) e.preventDefault(); }}
                   style={{ background: bg, color: text, borderColor: border, WebkitTouchCallout: 'none', userSelect: 'none' }}
                   className={`w-full rounded-xl border h-9 flex items-center justify-center text-[11px] font-bold relative transition-all shadow-sm hover:brightness-95 ${
-                    isHovered ? (selectionType === 'delete' ? 'ring-2 ring-rose-500/50 z-10' : 'ring-2 ring-amber-500/50 z-10') : ''
+                    isHovered && ((selectionType === 'delete' && isBooked) || (selectionType === 'new' && !isBooked))
+                      ? (selectionType === 'delete' ? 'ring-2 ring-rose-500/50 z-10' : 'ring-2 ring-amber-500/50 z-10') 
+                      : ''
                   }`}
                 >
                   {count > 0 ? count : ''}

@@ -33,3 +33,4 @@ firebase-debug.log*
 # Backups/Rác
 *.bak
 *.swp
+.last_deploy_hash
