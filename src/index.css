@@ -29,11 +29,8 @@ body {
     border-radius: 10px;
   }
 
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #cbd5e1;
   }
-}
-
-@media (hover: none) {
-    button:hover { background-color: inherit; border-color: inherit; }
 }

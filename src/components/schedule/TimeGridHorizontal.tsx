@@ -23,7 +23,7 @@ export const TimeGridHorizontal: React.FC<TimeGridHorizontalProps> = ({ days, ti
 
   return (
     <div className="overflow-x-auto flex-1 flex flex-col min-h-0">
-      <div ref={innerRef} className="flex-1 overflow-x-auto overflow-y-auto relative custom-scrollbar">
+      <div ref={innerRef} className="flex-1 overflow-x-auto overflow-y-auto relative custom-scrollbar w-max min-w-full">
         <div className="sticky top-0 z-40 bg-white pt-3 pb-2 pr-2 pl-0 border-b border-gray-100 min-w-max">
           <div className="absolute top-0 bottom-0 left-0 right-0 pointer-events-none z-[50]">
             <div className="sticky left-0 w-[54px] h-full bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]" />
